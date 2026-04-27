@@ -109,7 +109,7 @@ export default async function ArticlePage({
           </a>
           {a.translated && a.original_title && (
             <p className="text-xs text-mute mt-3 italic">
-              Original-Titel: „{a.original_title}"
+              Original-Titel: „{a.original_title}“
             </p>
           )}
         </div>
