@@ -1,6 +1,25 @@
 {
-  "enabledMcpjsonServers": [
-    "supabase"
-  ],
-  "enableAllProjectMcpServers": true
+  "enabledMcpjsonServers": ["supabase"],
+  "enableAllProjectMcpServers": true,
+  "permissions": {
+    "allow": [
+      "Bash(./scripts/deploy.sh:*)",
+      "Bash(bash ./scripts/deploy.sh:*)",
+      "Bash(chmod +x ./scripts/deploy.sh)",
+      "Bash(test -f .env.deploy)",
+      "Bash(npx --yes vercel:*)",
+      "Bash(npx --yes @railway/cli:*)",
+      "Bash(npx --yes supabase:*)",
+      "Bash(npm ci)",
+      "Bash(npm run build)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git fetch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
 }
