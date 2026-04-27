@@ -1,0 +1,45 @@
+name: NFL Data + News Scrapers
+
+on:
+  schedule:
+    # Stuendlich: nur News (niedriges Datenvolumen, schnell, immer frisch)
+    - cron: '7 * * * *'
+    # Taeglich 05:00 UTC: voller Run (rosters, depth-charts, EPA, snap-counts, injuries, videos, news)
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Run-Mode'
+        required: false
+        default: 'news'
+        type: choice
+        options: ['news', 'full']
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scrapers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -e .
+
+      # Stuendlich (cron: '7 * * * *') ODER manuell mit mode=news -> nur News
+      - name: Run news scraper only (hourly)
+        if: ${{ github.event.schedule == '7 * * * *' || inputs.mode == 'news' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python -m scrapers.nfl_news
+
+      # Taeglich (cron: '0 5 * * *') ODER manuell mit mode=full -> alle Scraper
+      - name: Run all scrapers (daily)
+        if: ${{ github.event.schedule == '0 5 * * *' || inputs.mode == 'full' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python -m scrapers.run_all

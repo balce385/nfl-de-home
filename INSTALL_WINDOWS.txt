@@ -1,0 +1,88 @@
+================================================================
+NFL-DE-Fan Hub — Installation auf Windows (E:\Balce-AI\NFL-DE-Fan-app)
+================================================================
+
+ZIEL: Das Projekt nach E:\Balce-AI\NFL-DE-Fan-app entpacken und starten.
+
+
+SCHRITT 1: ZIP entpacken
+------------------------
+1. Öffne den Windows-Explorer
+2. Gehe zu E:\Balce-AI\
+3. Lege den Ordner "NFL-DE-Fan-app" an, falls nicht vorhanden
+4. Rechtsklick auf nfl-de-fan-hub.zip → "Alle extrahieren..."
+5. Als Ziel E:\Balce-AI\NFL-DE-Fan-app eingeben
+6. WICHTIG: Falls beim Extrahieren ein Unterordner "nfl-de-fan-hub"
+   entsteht, verschiebe seinen INHALT direkt nach
+   E:\Balce-AI\NFL-DE-Fan-app, sodass package.json
+   direkt unter E:\Balce-AI\NFL-DE-Fan-app\package.json liegt.
+
+
+SCHRITT 2: Node.js installieren (falls noch nicht vorhanden)
+-------------------------------------------------------------
+- Lade Node.js LTS (v20 oder neuer) von https://nodejs.org/
+- Installiere mit Standardeinstellungen
+- Prüfe in PowerShell: node --version
+
+
+SCHRITT 3: Dependencies installieren
+-------------------------------------
+1. PowerShell oder CMD öffnen
+2. Ins Projektverzeichnis wechseln:
+   cd E:\Balce-AI\NFL-DE-Fan-app
+3. Pakete installieren (dauert 1-3 Minuten):
+   npm install
+
+
+SCHRITT 4: Dev-Server starten
+------------------------------
+   npm run dev
+
+Dann im Browser öffnen: http://localhost:3000
+
+
+VERFÜGBARE SEITEN
+=================
+   /                  Landing-Page mit allen Sections
+   /login             Login-Form (UI bereit, Logik in Phase 2)
+   /register          Registrierungs-Form
+   /dashboard         Dashboard mit KPIs, Charts, Watchlist
+   /magazin           Artikel-Übersicht
+   /community         Channel-Liste + Live-Chat-Preview
+   /preise            Pricing (Free / Pro 7,90 €)
+
+
+.ENV KONFIGURATION (optional in Phase 1)
+=========================================
+Phase 1 läuft komplett mit Mock-Daten — keine .env nötig.
+Erst für Phase 2 (Supabase Auth) wird .env.local benötigt:
+   1. Kopiere .env.example → .env.local
+   2. Fülle die Supabase-Werte ein (kommt in Phase 2)
+
+
+HÄUFIGE PROBLEME
+================
+
+Problem: "npm" wird nicht erkannt
+Lösung:  Node.js installieren, PowerShell neu starten
+
+Problem: Port 3000 ist belegt
+Lösung:  npm run dev -- -p 3001
+
+Problem: TypeScript-Fehler im Editor
+Lösung:  Erst nach "npm install" werden alle Typen erkannt
+
+Problem: Bilder/Fonts laden nicht
+Lösung:  Internetverbindung prüfen — Google Fonts und CDNs werden geladen
+
+
+NÄCHSTE SCHRITTE (Phase 2)
+===========================
+- Supabase Account anlegen (https://supabase.com)
+- Projekt in EU-Region erstellen
+- Keys nach .env.local übertragen
+- DB-Migrations ausführen (kommen in Phase 2)
+- Auth-Logik in Login/Register aktivieren
+
+
+VIEL ERFOLG! 🏈
