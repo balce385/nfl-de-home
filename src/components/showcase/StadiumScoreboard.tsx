@@ -27,7 +27,7 @@ export function StadiumScoreboard({
       <div className="flex justify-between items-center text-[10px] tracking-widest mb-4">
         <span className={`flex items-center gap-2 ${isLive ? 'text-danger' : 'text-mute'}`}>
           {isLive && <span className="w-2 h-2 rounded-full bg-danger animate-pulse" />}
-          {isLive ? `LIVE · Q${quarter} · ${clock}` : 'FINAL'}
+          {isLive ? `LIVE${quarter ? ` · Q${quarter}` : ''} · ${clock}` : clock || 'FINAL'}
         </span>
         <span className="text-mute uppercase">{venue}</span>
       </div>

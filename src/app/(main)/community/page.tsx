@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ChatRoom } from './ChatRoom';
 
@@ -7,11 +6,11 @@ export const metadata = {
 };
 
 export default async function CommunityPage() {
+  // Kein Login mehr nötig — Gäste können mitlesen.
   const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect('/login?next=/community');
 
   // Lade alle Channels — keine Pro-Restriktionen mehr
   const { data: channels } = await supabase
@@ -37,11 +36,11 @@ export default async function CommunityPage() {
       <ChatRoom
         channels={channels ?? []}
         token={session?.access_token ?? ''}
-        userId={user.id}
+        userId={user?.id ?? 'guest'}
         userName={
-          (user.user_metadata?.full_name as string | undefined) ??
-          user.email?.split('@')[0] ??
-          'Fan'
+          (user?.user_metadata?.full_name as string | undefined) ??
+          user?.email?.split('@')[0] ??
+          'Gast'
         }
       />
     </div>

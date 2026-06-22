@@ -1,9 +1,9 @@
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { TrendingUp, Trophy, Users, Bell, type LucideIcon } from 'lucide-react';
 import { DashboardSidebar } from '@/components/dashboard/Sidebar';
-import { PlayerStatsCard } from '@/components/dashboard/PlayerStatsCard';
+import { PlayerExplorer } from '@/components/dashboard/PlayerExplorer';
 import { createClient } from '@/lib/supabase/server';
+import { getScoreboard, getStandings, getAllTeams } from '@/lib/nfl-live';
 import { featuredPlayer, topTeams, articles, liveGame } from '@/lib/mock-data';
 
 type DashboardData = {
@@ -50,20 +50,67 @@ async function fetchDashboardData(token: string | null): Promise<DashboardData> 
 }
 
 export default async function DashboardPage() {
+  // Kein Login mehr nötig — Dashboard ist offen.
   const supabase = createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
 
   const {
     data: { session },
   } = await supabase.auth.getSession();
-  const data = await fetchDashboardData(session?.access_token ?? null);
+
+  // Live-Daten (ESPN) parallel zu den Dashboard-Daten laden
+  const [data, liveGames, standings, allTeams] = await Promise.all([
+    fetchDashboardData(session?.access_token ?? null),
+    getScoreboard(),
+    getStandings(),
+    getAllTeams(),
+  ]);
+
+  // Mock-Daten durch Live-Daten ersetzen, sobald verfügbar
+  const espnGame =
+    liveGames.find((g) => g.state === 'in') ??
+    liveGames.find((g) => g.state === 'post') ??
+    liveGames[0] ??
+    null;
+  const recordByCode = new Map(standings.map((s) => [s.code, s.record]));
+  if (espnGame) {
+    data.liveGame = {
+      ...data.liveGame,
+      status: espnGame.state === 'in' ? 'live' : espnGame.state === 'post' ? 'final' : 'scheduled',
+      clock: espnGame.statusText,
+      venue: espnGame.venue,
+      home: {
+        ...data.liveGame.home,
+        code: espnGame.home.code,
+        name: espnGame.home.name,
+        score: espnGame.home.score,
+        record: recordByCode.get(espnGame.home.code) ?? '',
+      },
+      away: {
+        ...data.liveGame.away,
+        code: espnGame.away.code,
+        name: espnGame.away.name,
+        score: espnGame.away.score,
+        record: recordByCode.get(espnGame.away.code) ?? '',
+      },
+    };
+  }
+  if (standings.length > 0) {
+    data.topTeams = standings.slice(0, 6).map((s) => ({
+      code: s.code,
+      name: s.name,
+      record: s.record,
+      conference: s.conference,
+      score: 0,
+      color: 'blue' as const,
+    }));
+  }
 
   const firstName =
-    (user.user_metadata?.full_name as string | undefined)?.split(' ')[0] ??
-    user.email?.split('@')[0] ??
+    (user?.user_metadata?.full_name as string | undefined)?.split(' ')[0] ??
+    user?.email?.split('@')[0] ??
     'Fan';
 
   return (
@@ -123,9 +170,17 @@ export default async function DashboardPage() {
 
         {/* Main Grid */}
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Left: Featured Player */}
+          {/* Left: Spieler-Auswahl (alle Teams, Live-Roster) */}
           <div className="lg:col-span-2">
-            <PlayerStatsCard player={data.featuredPlayer} />
+            <PlayerExplorer
+              teams={allTeams.map((t) => ({
+                id: t.id,
+                name: t.name,
+                shortName: t.shortName,
+                color: t.color,
+                logo: t.logo,
+              }))}
+            />
 
             {/* Live Game */}
             <div className="card p-6 mt-6">
@@ -133,7 +188,8 @@ export default async function DashboardPage() {
                 <div className="flex items-center gap-2">
                   <span className="live-dot" />
                   <span className="text-xs font-mono font-bold text-danger">
-                    LIVE · Q{data.liveGame.quarter} · {data.liveGame.clock}
+                    {data.liveGame.status === 'live' ? 'LIVE · ' : ''}
+                    {data.liveGame.clock}
                   </span>
                 </div>
                 <Link href="#" className="text-xs text-primary hover:text-accent">

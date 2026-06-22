@@ -1,4 +1,4 @@
-import type { Game, Player, Article, Team } from '@/types';
+import type { Game, Player, Team } from '@/types';
 
 export const liveGame: Game = {
   id: 'kc-phi-2026-w08',
@@ -23,91 +23,22 @@ export const tickerScores = [
 ];
 
 export const featuredPlayer: Player = {
-  id: 'pmahomes-15',
-  name: 'Patrick Mahomes',
+  id: 'bpurdy-13',
+  name: 'Brock Purdy',
   position: 'QB',
-  team: 'KC',
+  team: 'SF',
   stats: {
-    passYards: 2184,
-    touchdowns: 17,
-    interceptions: 4,
-    qbr: 72.3,
-    snapPercent: 98.4,
+    passYards: 2356,
+    touchdowns: 18,
+    interceptions: 5,
+    qbr: 70.1,
+    snapPercent: 99.1,
   },
-  trend: [42, 38, 55, 70, 62, 78, 72, 88],
+  trend: [44, 51, 48, 66, 72, 69, 81, 86],
 };
 
-export const articles: Article[] = [
-  {
-    slug: 'chiefs-offense-anders-2026',
-    category: 'Analyse',
-    categoryColor: 'primary',
-    accentTeam: 'KC',
-    accentColor: 'red',
-    title: 'Warum die Chiefs-Offense diese Saison anders aussieht',
-    excerpt:
-      'Mehr 11-Personnel, kürzere Passrouten, weniger Play-Action — eine taktische Bestandsaufnahme nach acht Wochen.',
-    publishedAt: '2026-04-24',
-    readingMinutes: 7,
-  },
-  {
-    slug: 'waiver-wire-week-9-sleeper',
-    category: 'Fantasy',
-    categoryColor: 'accent',
-    accentTeam: 'PHI',
-    accentColor: 'emerald',
-    title: 'Waiver-Wire Week 9: Drei Sleeper, die du jetzt picken solltest',
-    excerpt:
-      'Snap-Counts und Target-Share zeigen drei Spieler, die unter dem Radar fliegen — noch.',
-    publishedAt: '2026-04-23',
-    readingMinutes: 5,
-  },
-  {
-    slug: 'nfl-munich-2026-stand',
-    category: 'Community',
-    categoryColor: 'warn',
-    accentTeam: 'DACH',
-    accentColor: 'blue',
-    title: 'NFL-Munich-Game 2026: Was wir wissen — und was nicht',
-    excerpt:
-      'Datum, Teams, Tickets: Der Stand der Spekulationen rund um das nächste Deutschland-Spiel.',
-    publishedAt: '2026-04-22',
-    readingMinutes: 4,
-  },
-  {
-    slug: 'rookie-class-2026-bewertung',
-    category: 'Draft',
-    categoryColor: 'primary',
-    accentTeam: 'NFL',
-    accentColor: 'blue',
-    title: 'Die Rookie-Klasse 2026 nach acht Wochen — wer liefert?',
-    excerpt: 'Erste Datenpunkte zu Snap-Counts, Production und PFF-Grades der Top-Picks.',
-    publishedAt: '2026-04-21',
-    readingMinutes: 8,
-  },
-  {
-    slug: 'defense-renaissance-baltimore',
-    category: 'Analyse',
-    categoryColor: 'primary',
-    accentTeam: 'BAL',
-    accentColor: 'purple',
-    title: 'Baltimores Defense ist wieder die Nummer eins — wie?',
-    excerpt: 'Pressure-Rates, Coverage-Schemes und ein Coordinator, der seinen Stempel drückt.',
-    publishedAt: '2026-04-20',
-    readingMinutes: 6,
-  },
-  {
-    slug: 'fantasy-trade-deadline-guide',
-    category: 'Fantasy',
-    categoryColor: 'accent',
-    accentTeam: 'FF',
-    accentColor: 'emerald',
-    title: 'Trade Deadline Guide: Buy Low, Sell High',
-    excerpt: 'Sechs konkrete Trade-Vorschläge mit Begründung — basierend auf erwartbarer Regression.',
-    publishedAt: '2026-04-19',
-    readingMinutes: 9,
-  },
-];
+// Artikel kommen aus der lokalen Redaktions-Datenbank (volle Texte inklusive)
+export { articles } from '@/data/articles';
 
 export const topTeams: Team[] = [
   { code: 'KC',  name: 'Kansas City Chiefs',     record: '6–1', conference: 'AFC West',  score: 0, color: 'red' },

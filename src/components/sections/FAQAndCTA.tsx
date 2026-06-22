@@ -55,17 +55,17 @@ export function CTASection() {
           <span className="grad-text italic">die nächste Snap?</span>
         </h2>
         <p className="text-mute mt-6 text-lg max-w-xl mx-auto">
-          Erstelle deinen kostenlosen Account in 30 Sekunden. Kein Credit-Card-Quatsch.
+          Kein Account nötig — alles ist frei zugänglich. Spring direkt rein.
         </p>
         <div className="mt-10 flex flex-wrap justify-center gap-3">
           <Link
-            href="/register"
+            href="/dashboard"
             className="btn-primary text-sm font-semibold px-7 py-4 rounded-lg inline-flex items-center gap-2 text-white"
           >
-            Account erstellen <ArrowRight size={16} strokeWidth={2.5} />
+            Zum Dashboard <ArrowRight size={16} strokeWidth={2.5} />
           </Link>
-          <Link href="/dashboard" className="btn-ghost text-sm font-semibold px-7 py-4 rounded-lg">
-            Erst mal stöbern
+          <Link href="/news" className="btn-ghost text-sm font-semibold px-7 py-4 rounded-lg">
+            News &amp; Team-Hub
           </Link>
         </div>
       </div>

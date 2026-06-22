@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import { getArticle } from '@/data/articles';
 
 type Article = {
   slug: string;
@@ -25,18 +26,42 @@ export default async function ArticlePage({
 }: {
   params: { slug: string };
 }) {
-  const supabase = createClient();
-  const { data: article } = await supabase
-    .from('articles')
-    .select('*')
-    .eq('slug', params.slug)
-    .maybeSingle();
+  // 1) Lokale Redaktions-Artikel (volle Texte, immer verfügbar)
+  const local = getArticle(params.slug);
+  let article: Article | null = local
+    ? {
+        slug: local.slug,
+        title: local.title,
+        excerpt: local.excerpt,
+        body_md: local.body,
+        cover_url: null,
+        category: local.category,
+        source: local.source ?? null,
+        source_url: local.sourceUrl ?? null,
+        language: 'de',
+        original_title: null,
+        translated: false,
+        team_id: local.teamId ?? null,
+        published_at: local.publishedAt,
+      }
+    : null;
+
+  // 2) Fallback: Supabase (News-Scraper-Artikel)
+  if (!article) {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('articles')
+      .select('*')
+      .eq('slug', params.slug)
+      .maybeSingle();
+    article = (data as Article) ?? null;
+  }
 
   if (!article) {
     notFound();
   }
 
-  const a = article as Article;
+  const a = article;
   const published = a.published_at
     ? new Date(a.published_at).toLocaleDateString('de-DE', {
         year: 'numeric',
@@ -123,12 +148,19 @@ export async function generateMetadata({
 }: {
   params: { slug: string };
 }) {
-  const supabase = createClient();
-  const { data: a } = await supabase
-    .from('articles')
-    .select('title, excerpt, cover_url')
-    .eq('slug', params.slug)
-    .maybeSingle();
+  const local = getArticle(params.slug);
+  let a: { title: string; excerpt: string | null; cover_url: string | null } | null = local
+    ? { title: local.title, excerpt: local.excerpt, cover_url: null }
+    : null;
+  if (!a) {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('articles')
+      .select('title, excerpt, cover_url')
+      .eq('slug', params.slug)
+      .maybeSingle();
+    a = data ?? null;
+  }
   if (!a) return { title: 'Artikel nicht gefunden — NFL DE Hub' };
   return {
     title: `${a.title} — NFL DE Hub`,

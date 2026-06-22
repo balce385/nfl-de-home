@@ -1,14 +1,25 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import { liveGame } from '@/lib/mock-data';
+import { getScoreboard, getStandings, type LiveGame } from '@/lib/nfl-live';
 
-export function Hero() {
+export async function Hero() {
+  // Live-Daten von der ESPN-API (gecacht, 60s)
+  const [games, standings] = await Promise.all([getScoreboard(), getStandings()]);
+  const game =
+    games.find((g) => g.state === 'in') ??
+    games.find((g) => g.state === 'post') ??
+    games[0] ??
+    null;
+  const recordByCode = new Map(standings.map((s) => [s.code, s.record]));
+
   return (
     <section className="relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 pt-16 pb-24 lg:pt-24 lg:pb-32 grid lg:grid-cols-12 gap-12 items-center">
         <div className="lg:col-span-7 animate-reveal">
           <div className="flex items-center gap-3 mb-6">
-            <span className="chip-accent chip">Saison 2026 · Week 8</span>
+            <span className="chip-accent chip">
+              {game ? `Saison ${game.season} · Week ${game.week}` : 'NFL · Live'}
+            </span>
             <span className="chip">DACH · Deutsch</span>
           </div>
 
@@ -34,29 +45,29 @@ export function Hero() {
 
           <div className="mt-9 flex flex-wrap gap-3">
             <Link
-              href="/register"
+              href="/dashboard"
               className="btn-primary text-sm font-semibold px-6 py-3.5 rounded-lg inline-flex items-center gap-2 text-white"
             >
-              Account erstellen
+              Live-Dashboard ansehen
               <ArrowRight size={16} strokeWidth={2.5} />
             </Link>
             <Link
-              href="/dashboard"
+              href="/news"
               className="btn-ghost text-sm font-semibold px-6 py-3.5 rounded-lg inline-flex items-center gap-2"
             >
-              Live-Dashboard ansehen
+              News &amp; Team-Hub
             </Link>
           </div>
 
           <div className="mt-12 grid grid-cols-3 gap-6 max-w-lg">
-            <Stat value="12.4k" label="Aktive Fans" />
-            <Stat value="2.6k" label="Spieler-Profile" />
-            <Stat value="< 500ms" label="Suche" />
+            <Stat value="32" label="NFL-Teams" />
+            <Stat value={String(games.length || 16)} label="Spiele im Ticker" />
+            <Stat value="60s" label="Daten-Refresh" />
           </div>
         </div>
 
         <div className="lg:col-span-5 animate-reveal" style={{ animationDelay: '.15s' }}>
-          <LiveGameCard />
+          <LiveGameCard game={game} recordByCode={recordByCode} />
         </div>
       </div>
 
@@ -69,7 +80,7 @@ export function Hero() {
           <span className="hover:text-ink transition">ESPN</span>
           <span className="hover:text-ink transition">NFL.com</span>
           <span className="hover:text-ink transition">TheSportsDB</span>
-          <span className="text-accent">● täglich aktualisiert</span>
+          <span className="text-accent">● live aktualisiert</span>
         </div>
       </div>
     </section>
@@ -85,42 +96,67 @@ function Stat({ value, label }: { value: string; label: string }) {
   );
 }
 
-function LiveGameCard() {
-  const colorMap: Record<string, string> = {
-    red: 'bg-red-600/20 border-red-500/40',
-    emerald: 'bg-emerald-700/20 border-emerald-500/40',
-    blue: 'bg-blue-600/20 border-blue-500/40',
-    purple: 'bg-purple-700/20 border-purple-500/40',
-    orange: 'bg-orange-700/20 border-orange-500/40',
-  };
+function LiveGameCard({
+  game,
+  recordByCode,
+}: {
+  game: LiveGame | null;
+  recordByCode: Map<string, string>;
+}) {
+  if (!game) {
+    return (
+      <div className="card card-glow p-6 lg:p-7">
+        <span className="chip">Scoreboard</span>
+        <p className="text-sm text-mute mt-4">
+          Gerade keine Spiele — der Live-Ticker startet mit dem nächsten Kickoff.
+        </p>
+      </div>
+    );
+  }
+
+  const isLive = game.state === 'in';
+  const kickoff = game.kickoff
+    ? new Date(game.kickoff).toLocaleString('de-DE', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '';
 
   return (
     <div className="card card-glow p-6 lg:p-7">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
-          <span className="live-dot" />
-          <span className="text-xs font-mono font-bold tracking-wider text-danger">
-            LIVE · Q{liveGame.quarter} · {liveGame.clock}
+          {isLive && <span className="live-dot" />}
+          <span
+            className={`text-xs font-mono font-bold tracking-wider ${
+              isLive ? 'text-danger' : 'text-mute'
+            }`}
+          >
+            {isLive ? `LIVE · ${game.statusText}` : `${kickoff} (dt. Zeit)`}
           </span>
         </div>
         <span className="text-[10px] font-mono uppercase tracking-widest text-mute">
-          {liveGame.venue}
+          {game.venue}
         </span>
       </div>
 
       <div className="space-y-4">
-        {[liveGame.home, liveGame.away].map((team, idx) => (
+        {[game.home, game.away].map((team, idx) => (
           <div key={team.code} className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div
-                className={`w-12 h-12 rounded-lg border flex items-center justify-center font-display font-bold text-xl ${colorMap[team.color]}`}
+                className="w-12 h-12 rounded-lg border border-white/10 flex items-center justify-center font-display font-bold text-lg text-white"
+                style={{ backgroundColor: team.color }}
               >
                 {team.code}
               </div>
               <div>
                 <div className="font-semibold">{team.name}</div>
                 <div className="text-xs text-mute font-mono">
-                  {team.record} · {team.conference}
+                  {recordByCode.get(team.code) || 'Saison 2026'} · {idx === 0 ? 'Home' : 'Away'}
                 </div>
               </div>
             </div>
@@ -132,29 +168,17 @@ function LiveGameCard() {
       </div>
 
       <div className="mt-6 pt-6 border-t border-line grid grid-cols-3 gap-3 text-center">
-        <MiniStat label="Total YDS" value={`${liveGame.totalYards.home} / ${liveGame.totalYards.away}`} />
-        <MiniStat label="Turnovers" value={`${liveGame.turnovers.home} / ${liveGame.turnovers.away}`} />
-        <MiniStat label="Win-Prob." value={`${liveGame.winProbability.home}%`} accent />
+        <MiniStat label="Saison" value={String(game.season ?? '—')} />
+        <MiniStat label="Week" value={String(game.week ?? '—')} />
+        <MiniStat label="Status" value={isLive ? 'LIVE' : game.state === 'post' ? 'Final' : 'Geplant'} accent={isLive} />
       </div>
 
-      {liveGame.drive && (
-        <div className="mt-5">
-          <div className="flex justify-between text-[10px] font-mono text-mute mb-2 uppercase tracking-wider">
-            <span>{liveGame.drive.team} eigene {liveGame.drive.yardLine}</span>
-            <span>
-              {liveGame.drive.down} &amp; {liveGame.drive.distance}
-            </span>
-            <span>{liveGame.away.code} EZ</span>
-          </div>
-          <div className="yard">
-            <i style={{ width: `${liveGame.drive.progress}%` }} />
-          </div>
-        </div>
-      )}
-
-      <button className="mt-6 w-full text-sm font-semibold py-2.5 rounded-lg border border-line hover:border-primary hover:text-primary transition">
-        Vollständige Box-Score öffnen →
-      </button>
+      <Link
+        href="/news"
+        className="mt-6 block w-full text-center text-sm font-semibold py-2.5 rounded-lg border border-line hover:border-primary hover:text-primary transition"
+      >
+        Alle Spiele &amp; Team-News öffnen →
+      </Link>
     </div>
   );
 }

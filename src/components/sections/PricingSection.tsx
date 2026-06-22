@@ -50,13 +50,13 @@ export function PricingSection() {
             </ul>
 
             <Link
-              href="/register"
+              href="/dashboard"
               className="mt-10 block text-center btn-primary py-3 rounded-lg font-semibold text-sm text-white"
             >
-              Kostenlos registrieren
+              Direkt loslegen
             </Link>
             <p className="text-center text-xs text-mute mt-3">
-              Kein Bezahl-Mittel nötig. Account in 30 Sekunden.
+              Kein Account nötig. Alles frei zugänglich.
             </p>
           </div>
         </div>

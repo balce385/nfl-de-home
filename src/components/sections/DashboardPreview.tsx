@@ -1,14 +1,49 @@
 'use client';
 
-import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, Area, AreaChart } from 'recharts';
-import { featuredPlayer } from '@/lib/mock-data';
-
-const chartData = featuredPlayer.trend.map((value, i) => ({
-  week: `W${i + 1}`,
-  yards: value * 5,
-}));
+import { useEffect, useState } from 'react';
+import { ResponsiveContainer, Tooltip, XAxis, YAxis, Area, AreaChart } from 'recharts';
+import { useTeamSelection } from '@/components/TeamSelectionContext';
+import { buildFeaturedPlayer } from '@/data/team-qbs';
+import type { Player } from '@/types';
 
 export function DashboardPreview() {
+  // Folgt dem unten gewählten Team; Fallback, falls kein Provider vorhanden.
+  const selection = useTeamSelection();
+  const team = selection?.selected ?? 'KC';
+
+  // Sofort Demo-Werte zeigen, dann echte ESPN-Live-Stats nachladen.
+  const [featuredPlayer, setFeaturedPlayer] = useState<Player>(() =>
+    buildFeaturedPlayer(team)
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setFeaturedPlayer(buildFeaturedPlayer(team)); // Platzhalter beim Teamwechsel
+    fetch(`/api/team-stats?team=${encodeURIComponent(team)}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: Player) => {
+        if (!cancelled && data?.name) setFeaturedPlayer(data);
+      })
+      .catch(() => {
+        /* Demo-Werte bleiben bei Fehler erhalten */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [team]);
+
+  const chartData = featuredPlayer.trend.map((value, i) => ({
+    week: `W${i + 1}`,
+    yards: value,
+  }));
+
+  // YPG-Veränderung aus dem Trend ableiten (erster vs. letzter Wert).
+  const ypgDelta = Math.round(
+    ((featuredPlayer.trend[featuredPlayer.trend.length - 1] - featuredPlayer.trend[0]) /
+      featuredPlayer.trend[0]) *
+      100
+  );
+
   return (
     <section id="dashboard-preview" className="py-24 border-y border-line bg-black/20">
       <div className="max-w-7xl mx-auto px-6">
@@ -50,7 +85,10 @@ export function DashboardPreview() {
                   </span>
                 </div>
               </div>
-              <span className="chip-accent chip">+18% YPG</span>
+              <span className={`chip ${ypgDelta >= 0 ? 'chip-accent' : 'chip-warn'}`}>
+                {ypgDelta >= 0 ? '+' : ''}
+                {ypgDelta}% YPG
+              </span>
             </div>
 
             <div className="grid grid-cols-4 gap-3 mb-5">

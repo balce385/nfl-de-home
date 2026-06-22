@@ -28,18 +28,9 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const path = request.nextUrl.pathname;
-  const isProtected = path.startsWith('/dashboard');
-  const isAuthPage = path === '/login' || path === '/register';
-
-  if (!user && isProtected) {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-  if (user && isAuthPage) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
+  // Session-Token aktuell halten (für optionale Supabase-Features),
+  // aber KEIN Login-Zwang mehr: alle Seiten sind frei zugänglich.
+  await supabase.auth.getUser();
 
   return response;
 }
