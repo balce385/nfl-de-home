@@ -60,6 +60,7 @@ type QbStats = {
   position: string;
   stats: { passYards: number; touchdowns: number; interceptions: number; qbr: number };
   trend: number[];
+  season?: string;
 };
 
 const dateFmt = new Intl.DateTimeFormat('de-DE', {
@@ -238,7 +239,15 @@ export function FeaturesBento({ teams }: { teams: TeamOption[] }) {
               )}
               {qb && (
                 <p className="text-xs text-mute mt-3">
-                  {qb.name} · {qb.position} — Saisonwerte, Balken = Pass-Yards der letzten Spiele.
+                  {qb.name} · {qb.position} —{' '}
+                  {qb.season ? (
+                    <>
+                      Werte der Saison <strong className="text-ink">{qb.season}</strong>
+                    </>
+                  ) : (
+                    'Saisonwerte'
+                  )}
+                  , Balken = Pass-Yards der letzten Spiele.
                 </p>
               )}
             </div>

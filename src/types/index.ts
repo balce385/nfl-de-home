@@ -38,6 +38,12 @@ export interface Player {
   team: string;
   stats: PlayerStats;
   trend: number[];
+  /**
+   * Saison, aus der die Werte stammen (z.B. "2025"). Vor dem ersten Spieltag
+   * liefert ESPN noch die Vorsaison — ohne diese Angabe wirken die Zahlen
+   * schlicht veraltet.
+   */
+  season?: string;
 }
 
 export interface Article {

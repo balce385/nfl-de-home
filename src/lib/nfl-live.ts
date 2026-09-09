@@ -242,6 +242,10 @@ export async function getQbStats(teamAbbr: string): Promise<Player> {
     const cat = season?.categories?.[0];
     if (!names.length || !cat) return fallback;
 
+    // "2025 Regular Season" -> "2025". Vor dem ersten Spieltag der neuen Saison
+    // liefert ESPN noch die Vorsaison; das muss im UI sichtbar sein.
+    const seasonYear = /(\d{4})/.exec(season?.displayName ?? '')?.[1];
+
     const iYds = names.indexOf('passingYards');
     const iTD = names.indexOf('passingTouchdowns');
     const iINT = names.indexOf('interceptions');
@@ -283,6 +287,7 @@ export async function getQbStats(teamAbbr: string): Promise<Player> {
         snapPercent: fallback.stats.snapPercent, // nicht im Gamelog vorhanden
       },
       trend: trend.length >= 2 ? trend : fallback.trend,
+      season: seasonYear,
     };
   } catch {
     return fallback;
