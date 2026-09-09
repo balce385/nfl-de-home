@@ -157,7 +157,7 @@ export function PlayerExplorer({ teams }: { teams: ExplorerTeam[] }) {
               </button>
             ))}
             {roster && filtered.length === 0 && (
-              <p className="text-sm text-mute py-4">Kein Treffer für „{query}".</p>
+              <p className="text-sm text-mute py-4">Kein Treffer für „{query}&quot;.</p>
             )}
           </div>
         </div>
