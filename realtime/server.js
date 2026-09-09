@@ -9,8 +9,7 @@ const JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
 const ORIGINS = (process.env.CORS_ORIGINS || 'http://localhost:3000').split(',');
 
 if (!JWT_SECRET) {
-  console.error('SUPABASE_JWT_SECRET missing');
-  process.exit(1);
+  console.warn('SUPABASE_JWT_SECRET nicht gesetzt — Tokens werden über die Supabase-Auth-API geprüft');
 }
 
 const supabase = createClient(
@@ -32,13 +31,21 @@ const io = new Server(httpServer, {
   cors: { origin: ORIGINS, credentials: true },
 });
 
-// JWT-Auth Middleware
-io.use((socket, next) => {
+// JWT-Auth Middleware.
+// Mit SUPABASE_JWT_SECRET wird lokal geprüft (schnell, kein Netzwerk).
+// Ohne Secret fragt der Server einmal pro Verbindungsaufbau die Supabase-Auth-API.
+io.use(async (socket, next) => {
   const token = socket.handshake.auth?.token;
   if (!token) return next(new Error('No token'));
   try {
-    const payload = jwt.verify(token, JWT_SECRET, { audience: 'authenticated' });
-    socket.data.userId = payload.sub;
+    if (JWT_SECRET) {
+      const payload = jwt.verify(token, JWT_SECRET, { audience: 'authenticated' });
+      socket.data.userId = payload.sub;
+    } else {
+      const { data, error } = await supabase.auth.getUser(token);
+      if (error || !data?.user) throw new Error('token rejected by supabase');
+      socket.data.userId = data.user.id;
+    }
     next();
   } catch (e) {
     next(new Error('Invalid token'));

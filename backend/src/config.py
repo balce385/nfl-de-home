@@ -7,7 +7,8 @@ class Settings(BaseSettings):
     SUPABASE_URL: str
     SUPABASE_ANON_KEY: str
     SUPABASE_SERVICE_ROLE_KEY: str
-    SUPABASE_JWT_SECRET: str
+    # Optional: ohne Secret prüft auth.py Tokens per Supabase-Auth-API.
+    SUPABASE_JWT_SECRET: str = ""
     CORS_ORIGINS: str = "http://localhost:3000"
     ENV: str = "development"
 
