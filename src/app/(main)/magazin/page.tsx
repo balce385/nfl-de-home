@@ -1,5 +1,7 @@
 import { ArticleCard } from '@/components/ui/ArticleCard';
+import { TeamNewsFeed } from '@/components/magazin/TeamNewsFeed';
 import { articles } from '@/lib/mock-data';
+import { getAllTeams } from '@/lib/nfl-live';
 
 export const metadata = {
   title: 'Magazin — NFL-Analysen, News und Fantasy auf Deutsch',
@@ -7,8 +9,11 @@ export const metadata = {
     'Tiefenanalysen, Spieltagsberichte, Fantasy-Tipps und Hintergründe — von der Redaktion des NFL-DE-Hub.',
 };
 
-export default function MagazinPage() {
+export const revalidate = 300;
+
+export default async function MagazinPage() {
   const [featured, ...rest] = articles;
+  const teams = await getAllTeams();
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-16">
@@ -20,6 +25,22 @@ export default function MagazinPage() {
         <p className="text-mute mt-3 text-lg max-w-2xl">
           Wöchentliche Analysen, Game-Recaps und Hintergründe — kuratiert von echten NFL-Fans.
         </p>
+      </div>
+
+      {/* Live-News, gefiltert nach dem Lieblingsteam */}
+      <TeamNewsFeed
+        teams={teams.map((t) => ({
+          id: t.id,
+          name: t.name,
+          shortName: t.shortName,
+          color: t.color,
+          logo: t.logo,
+        }))}
+      />
+
+      <div className="mb-8">
+        <span className="chip">Redaktion</span>
+        <h2 className="font-display text-3xl font-bold mt-3">Analysen &amp; Hintergründe</h2>
       </div>
 
       {/* Featured */}

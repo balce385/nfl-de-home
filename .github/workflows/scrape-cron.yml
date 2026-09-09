@@ -18,15 +18,17 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: scrapers
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -e .
+
+      # Die Scraper importieren sich relativ (from .common import ...) und muessen
+      # deshalb als Paket `scrapers` vom Repo-Wurzelverzeichnis aus laufen.
+      # pyproject.toml installiert nur die Abhaengigkeiten, kein eigenes Paket.
+      - name: Install dependencies
+        run: pip install ./scrapers
 
       # Stuendlich (cron: '7 * * * *') ODER manuell mit mode=news -> nur News
       - name: Run news scraper only (hourly)

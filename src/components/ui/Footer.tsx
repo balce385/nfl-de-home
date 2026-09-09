@@ -9,7 +9,6 @@ const sections = [
       { href: '/magazin', label: 'Magazin' },
       { href: '/community', label: 'Community' },
       { href: '/api-docs', label: 'API' },
-      { href: '/preise', label: 'Preise' },
     ],
   },
   {

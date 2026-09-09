@@ -45,17 +45,31 @@ const W = 980;
 const H = 600;
 
 // Perspektivische 3D-Kamera (Pinhole, Bodenebene). z = Höhe über dem Rasen.
-const CAM = { back: 15, height: 24, focal: 270, horizon: 120, cx: W / 2 };
+//
+// `back` = Abstand hinter dem Backfield, `height` = Kamerahöhe in Yards,
+// `focal` = Brennweite (Pixel), `horizon` = Bildhöhe des Fluchtpunkts.
+// Die Blickwinkel entsprechen den üblichen TV- und Coaching-Perspektiven.
+export type CamKey = 'broadcast' | 'sideline' | 'endzone' | 'all22';
+
+const CAM_PRESETS: Record<CamKey, { label: string; hint: string; back: number; height: number; focal: number; horizon: number }> = {
+  broadcast: { label: 'Broadcast', hint: 'Klassische TV-Perspektive', back: 15, height: 24, focal: 270, horizon: 120 },
+  sideline: { label: 'Seitenlinie', hint: 'Flach und nah am Rasen', back: 7, height: 11, focal: 340, horizon: 210 },
+  endzone: { label: 'Endzone', hint: 'Hinter dem Quarterback', back: 27, height: 33, focal: 245, horizon: 92 },
+  all22: { label: 'All-22', hint: 'Coaching-Sicht von oben', back: 5, height: 60, focal: 205, horizon: 26 },
+};
+
+// Wird vom Kamera-Umschalter im UI überschrieben; die Zeichenschleife liest live mit.
+const CAM = { ...CAM_PRESETS.broadcast, cx: W / 2, zoom: 1 };
 
 function project(x: number, y: number, z = 0) {
   const depth = VIEW_BOT - y + CAM.back; // > 0
-  const s = CAM.focal / depth;
+  const s = (CAM.focal * CAM.zoom) / depth;
   return { X: CAM.cx + x * s, Y: CAM.horizon + (CAM.height - z) * s, s };
 }
 function unproject(X: number, Y: number): Pt | null {
   const s = (Y - CAM.horizon) / CAM.height;
   if (s <= 0.0001) return null;
-  const depth = CAM.focal / s;
+  const depth = (CAM.focal * CAM.zoom) / s;
   return { x: (X - CAM.cx) / s, y: VIEW_BOT - (depth - CAM.back) };
 }
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -240,6 +254,9 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
   const [simState, setSimState] = useState<'edit' | 'running' | 'done'>('edit');
   const [result, setResult] = useState<string>('');
   const [activePlay, setActivePlay] = useState<string>('');
+  const [camKey, setCamKey] = useState<CamKey>('broadcast');
+  const [zoom, setZoom] = useState(1);
+  const [playFilter, setPlayFilter] = useState('');
 
   // Refs für die persistente Animationsschleife (vermeiden stale closures)
   const targetRef = useRef(target);
@@ -550,6 +567,54 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
           ctx.lineTo(p.X + 2, p.Y);
           ctx.stroke();
         }
+      }
+
+      /* --- Torstangen: kräftigster Tiefenhinweis der ganzen Szene --- */
+      {
+        const postX = 3.08;      // 18,5 ft Abstand
+        const crossbarZ = 3.33;  // 10 ft Höhe
+        const topZ = 13.0;       // Uprights ragen ~35 ft über die Latte
+        const py = VIEW_TOP + 0.5;
+
+        const foot = project(0, py);
+        const crossL = project(-postX, py, crossbarZ);
+        const crossR = project(postX, py, crossbarZ);
+        const upL = project(-postX, py, topZ);
+        const upR = project(postX, py, topZ);
+        const stemTop = project(0, py, crossbarZ);
+
+        ctx.strokeStyle = '#f4d03f';
+        ctx.lineCap = 'round';
+        // Mittelstütze
+        ctx.lineWidth = Math.max(1.5, foot.s * 0.16);
+        ctx.beginPath();
+        ctx.moveTo(foot.X, foot.Y);
+        ctx.lineTo(stemTop.X, stemTop.Y);
+        ctx.stroke();
+        // Querlatte
+        ctx.beginPath();
+        ctx.moveTo(crossL.X, crossL.Y);
+        ctx.lineTo(crossR.X, crossR.Y);
+        ctx.stroke();
+        // Uprights
+        ctx.lineWidth = Math.max(1.2, foot.s * 0.13);
+        ctx.beginPath();
+        ctx.moveTo(crossL.X, crossL.Y);
+        ctx.lineTo(upL.X, upL.Y);
+        ctx.moveTo(crossR.X, crossR.Y);
+        ctx.lineTo(upR.X, upR.Y);
+        ctx.stroke();
+        ctx.lineCap = 'butt';
+      }
+
+      /* --- Tiefenschleier: entfernte Feldbereiche verlieren an Kontrast --- */
+      {
+        const near = project(0, VIEW_TOP + 14).Y;
+        const fog = ctx.createLinearGradient(0, skyTop, 0, near);
+        fog.addColorStop(0, 'rgba(15,26,51,.55)');
+        fog.addColorStop(1, 'rgba(15,26,51,0)');
+        ctx.fillStyle = fog;
+        ctx.fillRect(0, skyTop, W, Math.max(1, near - skyTop));
       }
 
       // LOS-Glow
@@ -925,11 +990,13 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  /* -------------------------------- Maus-Input ---------------------------- */
+  /* ------------------------------ Zeiger-Input ---------------------------- */
+  // Pointer-Events statt Maus-Events: damit funktionieren Touch und Stift
+  // genauso wie die Maus (vorher war der Designer auf Mobilgeräten unbedienbar).
 
   const dragRef = useRef<string | null>(null);
 
-  const pointerYd = (e: React.MouseEvent): Pt | null => {
+  const pointerYd = (e: React.PointerEvent): Pt | null => {
     const rect = canvasRef.current!.getBoundingClientRect();
     return unproject(
       ((e.clientX - rect.left) / rect.width) * W,
@@ -937,14 +1004,17 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
     );
   };
 
-  const onMouseDown = (e: React.MouseEvent) => {
+  const onPointerDown = (e: React.PointerEvent) => {
     if (simState !== 'edit') return;
     const yd = pointerYd(e);
     if (!yd) return;
-    const hit = playersRef.current.find((p) => dist(p, yd) < 1.4);
+    // Auf Touch ist der Finger ungenauer als ein Mauszeiger -> größerer Radius.
+    const radius = e.pointerType === 'touch' ? 2.2 : 1.4;
+    const hit = playersRef.current.find((p) => dist(p, yd) < radius);
     if (hit) {
       setSelected(hit.id);
       dragRef.current = hit.id;
+      e.currentTarget.setPointerCapture(e.pointerId);
     } else if (selected) {
       const sp = playersRef.current.find((p) => p.id === selected);
       if (sp && sp.side === 'O' && !['C', 'G', 'T'].includes(sp.pos)) {
@@ -955,7 +1025,7 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
     }
   };
 
-  const onMouseMove = (e: React.MouseEvent) => {
+  const onPointerMove = (e: React.PointerEvent) => {
     if (!dragRef.current || simState !== 'edit') return;
     const yd = pointerYd(e);
     if (!yd) return;
@@ -967,9 +1037,12 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
     }
   };
 
-  const onMouseUp = () => {
+  const onPointerUp = (e: React.PointerEvent) => {
     if (dragRef.current) {
       dragRef.current = null;
+      if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
       reassign(coverage);
     }
   };
@@ -1000,6 +1073,15 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
       rerender();
     }
   };
+  /** Nimmt den zuletzt gesetzten Wegpunkt zurück — häufigster Korrekturfall. */
+  const undoWaypoint = () => {
+    const p = playersRef.current.find((q) => q.id === selected);
+    if (p?.route.length) {
+      p.route.pop();
+      setActivePlay('');
+      rerender();
+    }
+  };
   const clearAll = () => {
     playersRef.current.forEach((p) => (p.route = []));
     setActivePlay('');
@@ -1012,22 +1094,59 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
     a.click();
   };
 
+  /* --------------------------- Kamera & Tastatur -------------------------- */
+
+  // Kamerawerte in das von der Zeichenschleife gelesene CAM-Objekt spiegeln.
+  useEffect(() => {
+    const p = CAM_PRESETS[camKey];
+    CAM.back = p.back;
+    CAM.height = p.height;
+    CAM.focal = p.focal;
+    CAM.horizon = p.horizon;
+    CAM.zoom = zoom;
+    rerender();
+    // rerender ist stabil genug (nur setState-Wrapper); bewusst nicht in den Deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camKey, zoom]);
+
+  // Tastaturkürzel: Leertaste simuliert, Esc zurück, Backspace nimmt zurück.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (simState !== 'running') startSim();
+      } else if (e.code === 'Escape') {
+        resetPositions();
+      } else if (e.code === 'Backspace') {
+        e.preventDefault();
+        undoWaypoint();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
   const el = eligibles(playersRef.current.filter((p) => p.side === 'O'));
   const selPlayer = playersRef.current.find((p) => p.id === selected);
-  const teamPlays = getTeamPlays(offTeam);
+  const allPlays = getTeamPlays(offTeam);
+  const teamPlays = playFilter
+    ? allPlays.filter((c) => c.name.toLowerCase().includes(playFilter.toLowerCase()))
+    : allPlays;
   const activeConcept = activePlay ? CONCEPT_MAP[activePlay] : null;
 
   /* ---------------------------------- Render ------------------------------ */
 
   return (
-    <div className="grid xl:grid-cols-[250px_1fr_240px] gap-4">
-      {/* Offense / Playbook Panel */}
+    <div className="grid xl:grid-cols-[260px_1fr_250px] gap-4">
+      {/* ------------------------------ Angriff ------------------------------ */}
       <div className="card p-4 space-y-4 order-2 xl:order-1">
         <div>
           <div className="text-xs font-mono uppercase tracking-wider mb-1.5" style={{ color: oCol }}>
-            ● Offense
+            ● Angriff
           </div>
-          <select value={offTeam} onChange={(e) => setOffTeam(e.target.value)} className="pd-select">
+          <select value={offTeam} onChange={(e) => setOffTeam(e.target.value)} className="pd-select" aria-label="Team im Angriff">
             {teams.map((t) => (
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
@@ -1035,8 +1154,24 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
         </div>
 
         <div>
-          <label className="pd-label">Playbook · {offName.split(' ').slice(-1)[0]}</label>
-          <div className="space-y-1.5">
+          <div className="flex items-baseline justify-between gap-2">
+            <label className="pd-label" htmlFor="pd-playsearch">
+              Playbook · {allPlays.length}
+            </label>
+            {activePlay && (
+              <button onClick={() => { setActivePlay(''); clearAll(); }} className="text-[10px] text-mute hover:text-ink underline">
+                Auswahl lösen
+              </button>
+            )}
+          </div>
+          <input
+            id="pd-playsearch"
+            value={playFilter}
+            onChange={(e) => setPlayFilter(e.target.value)}
+            placeholder="Spielzug suchen …"
+            className="pd-select mb-2"
+          />
+          <div className="space-y-1.5 max-h-64 overflow-y-auto pd-scroll pr-1">
             {teamPlays.map((c) => (
               <button
                 key={c.key}
@@ -1049,6 +1184,9 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
                 </span>
               </button>
             ))}
+            {teamPlays.length === 0 && (
+              <p className="text-[11px] text-mute py-2">Kein Spielzug passt zu „{playFilter}“.</p>
+            )}
           </div>
           {activeConcept && (
             <p className="text-[11px] text-mute leading-relaxed mt-2 border-l-2 pl-2" style={{ borderColor: oCol }}>
@@ -1057,112 +1195,154 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
           )}
         </div>
 
-        <div>
-          <label className="pd-label">Formation</label>
-          <select
-            value={formation}
-            onChange={(e) => {
-              setFormation(e.target.value);
-              setActivePlay('');
-              loadFormation(e.target.value, coverage);
-            }}
-            className="pd-select"
-          >
-            {Object.keys(OFF_FORMATIONS).map((f) => (
-              <option key={f}>{f}</option>
-            ))}
-          </select>
-        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="col-span-2">
+            <label className="pd-label">Formation</label>
+            <select
+              value={formation}
+              onChange={(e) => {
+                setFormation(e.target.value);
+                setActivePlay('');
+                loadFormation(e.target.value, coverage);
+              }}
+              className="pd-select"
+            >
+              {Object.keys(OFF_FORMATIONS).map((f) => (
+                <option key={f}>{f}</option>
+              ))}
+            </select>
+          </div>
 
-        <div>
-          <label className="pd-label">Play-Typ</label>
-          <div className="flex gap-2">
-            {(['pass', 'run'] as const).map((tp) => (
-              <button
-                key={tp}
-                onClick={() => setPlayType(tp)}
-                className={`flex-1 text-xs font-semibold py-1.5 rounded-lg border transition ${
-                  playType === tp ? 'border-primary bg-primary/15 text-primary' : 'border-line text-mute hover:text-ink'
-                }`}
-              >
-                {tp === 'pass' ? 'Pass' : 'Run'}
-              </button>
-            ))}
+          <div className="col-span-2">
+            <label className="pd-label">Spielart</label>
+            <div className="flex gap-2">
+              {(['pass', 'run'] as const).map((tp) => (
+                <button
+                  key={tp}
+                  onClick={() => setPlayType(tp)}
+                  aria-pressed={playType === tp}
+                  className={`flex-1 text-xs font-semibold py-1.5 rounded-lg border transition ${
+                    playType === tp ? 'border-primary bg-primary/15 text-primary' : 'border-line text-mute hover:text-ink'
+                  }`}
+                >
+                  {tp === 'pass' ? 'Pass' : 'Lauf'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="col-span-2">
+            <label className="pd-label">{playType === 'pass' ? 'Ziel-Receiver' : 'Ballträger'}</label>
+            <select value={target} onChange={(e) => setTarget(e.target.value)} className="pd-select">
+              {el.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.pos} · {p.x < 0 ? 'links' : 'rechts'} außen ({Math.abs(Math.round(p.x))} yd)
+                </option>
+              ))}
+            </select>
           </div>
         </div>
-
-        <div>
-          <label className="pd-label">{playType === 'pass' ? 'Ziel-Receiver' : 'Ballträger'}</label>
-          <select value={target} onChange={(e) => setTarget(e.target.value)} className="pd-select">
-            {el.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.pos} ({p.x < 0 ? 'links' : 'rechts'} {Math.abs(Math.round(p.x))})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="space-y-2">
-          <button onClick={clearRoute} disabled={!selPlayer} className="pd-btn w-full">
-            ✕ Route löschen {selPlayer ? `(${selPlayer.pos})` : ''}
-          </button>
-          <button onClick={clearAll} className="pd-btn w-full">✕ Alle Routen löschen</button>
-        </div>
-        <p className="text-[11px] text-mute leading-relaxed">
-          <strong className="text-ink">So geht&apos;s:</strong> Spielzug laden – oder Spieler anklicken &
-          ins Feld klicken (= Wegpunkt). Spieler ziehen = Position ändern.
-        </p>
       </div>
 
-      {/* Feld */}
+      {/* ------------------------------- Feld -------------------------------- */}
       <div className="order-1 xl:order-2">
+        {/* Steuerleiste: erst die Aktion, dann Tempo, dann Kamera */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <button
             onClick={simState === 'running' ? undefined : replay}
             disabled={simState === 'running'}
             className="btn-primary text-sm font-bold px-5 py-2 rounded-lg text-white disabled:opacity-50"
           >
-            {simState === 'running' ? '⏳ Läuft…' : simState === 'done' ? '↻ Replay' : '▶ Simulieren'}
+            {simState === 'running' ? '⏳ Läuft…' : simState === 'done' ? '↻ Nochmal' : '▶ Simulieren'}
           </button>
-          <button onClick={resetPositions} className="pd-btn">↺ Zurück zum Editor</button>
-          <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="pd-select !w-auto">
-            <option value={0.5}>0.5×</option>
+          <button onClick={resetPositions} className="pd-btn" title="Escape">↺ Editor</button>
+          <select
+            value={speed}
+            onChange={(e) => setSpeed(Number(e.target.value))}
+            className="pd-select !w-auto"
+            aria-label="Abspielgeschwindigkeit"
+          >
+            <option value={0.5}>0,5×</option>
             <option value={1}>1×</option>
-            <option value={1.5}>1.5×</option>
+            <option value={1.5}>1,5×</option>
             <option value={2}>2×</option>
           </select>
+
+          <span className="hidden sm:block w-px h-6 bg-line mx-1" />
+
+          {/* Kamera-Perspektiven */}
+          <div className="flex gap-1" role="group" aria-label="Kameraperspektive">
+            {(Object.keys(CAM_PRESETS) as CamKey[]).map((k) => (
+              <button
+                key={k}
+                onClick={() => setCamKey(k)}
+                title={CAM_PRESETS[k].hint}
+                aria-pressed={camKey === k}
+                className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border transition ${
+                  camKey === k ? 'border-primary bg-primary/15 text-primary' : 'border-line text-mute hover:text-ink'
+                }`}
+              >
+                {CAM_PRESETS[k].label}
+              </button>
+            ))}
+          </div>
+          <label className="flex items-center gap-1.5 text-[11px] text-mute">
+            <span className="font-mono">Zoom</span>
+            <input
+              type="range"
+              min={0.75}
+              max={1.6}
+              step={0.05}
+              value={zoom}
+              onChange={(e) => setZoom(Number(e.target.value))}
+              className="w-20 accent-blue-400"
+              aria-label="Zoom"
+            />
+          </label>
+
           <button onClick={savePng} className="pd-btn ml-auto">💾 PNG</button>
         </div>
 
-        {result && (
-          <div className="card px-4 py-3 mb-3 text-sm font-semibold border-primary/40">{result}</div>
-        )}
+        {/* Ergebnis-Zeile hat feste Höhe, damit das Feld beim Simulieren nicht springt */}
+        <div className="min-h-[46px] mb-3">
+          {result && (
+            <div className="card px-4 py-3 text-sm font-semibold border-primary/40">{result}</div>
+          )}
+        </div>
 
         <div className="pd-stage">
           <canvas
             ref={canvasRef}
             width={W}
             height={H}
-            onMouseDown={onMouseDown}
-            onMouseMove={onMouseMove}
-            onMouseUp={onMouseUp}
-            onMouseLeave={onMouseUp}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            style={{ touchAction: 'none' }}
             className="w-full rounded-xl cursor-crosshair select-none"
           />
         </div>
-        <p className="text-[11px] text-mute mt-2 font-mono">
-          {offName} <span style={{ color: oCol }}>●</span> vs. {defName}{' '}
-          <span style={{ color: dCol }}>●</span> · {coverage}
-        </p>
+
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 mt-2">
+          <p className="text-[11px] text-mute font-mono">
+            {offName} <span style={{ color: oCol }}>●</span> vs. {defName}{' '}
+            <span style={{ color: dCol }}>●</span> · {coverage} · {CAM_PRESETS[camKey].label}
+          </p>
+          <p className="text-[11px] text-mute">
+            <kbd className="pd-kbd">Leertaste</kbd> simulieren ·{' '}
+            <kbd className="pd-kbd">Esc</kbd> zurück · <kbd className="pd-kbd">⌫</kbd> Wegpunkt zurück
+          </p>
+        </div>
       </div>
 
-      {/* Defense Panel */}
+      {/* ---------------------------- Verteidigung --------------------------- */}
       <div className="card p-4 space-y-4 order-3">
         <div>
           <div className="text-xs font-mono uppercase tracking-wider mb-1.5" style={{ color: dCol }}>
-            ● Defense
+            ● Verteidigung
           </div>
-          <select value={defTeam} onChange={(e) => setDefTeam(e.target.value)} className="pd-select">
+          <select value={defTeam} onChange={(e) => setDefTeam(e.target.value)} className="pd-select" aria-label="Team in der Verteidigung">
             {teams.map((t) => (
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
@@ -1183,12 +1363,37 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
               <option key={c}>{c}</option>
             ))}
           </select>
+          <p className="text-[11px] text-mute leading-relaxed mt-2 border-l-2 border-line pl-2">
+            {coverage.startsWith('Cover 1') && 'Manndeckung mit einem tiefen Free Safety als Absicherung.'}
+            {coverage.startsWith('Cover 2') && 'Zwei tiefe Safeties teilen sich das Feld — gestrichelte Linien zeigen die Zonen.'}
+            {coverage.startsWith('Cover 3') && 'Drei tiefe Zonen, vier Verteidiger darunter.'}
+            {coverage.startsWith('Cover 0') && 'Blitz! Sechs Rusher, Manndeckung ohne jede Absicherung.'}
+          </p>
         </div>
-        <div className="text-[11px] text-mute leading-relaxed space-y-2">
-          <p><strong className="text-ink">Cover 1:</strong> Manndeckung, ein tiefer Free Safety.</p>
-          <p><strong className="text-ink">Cover 2/3:</strong> Zonen — gestrichelte Linien zeigen die Landmarken.</p>
-          <p><strong className="text-ink">Cover 0:</strong> Blitz! 6 Rusher, Manndeckung ohne Hilfe.</p>
-          <p className="text-warn">Die Defense richtet sich automatisch an deiner Formation aus und reagiert live.</p>
+
+        {/* Routen-Werkzeuge: gehören zur Bearbeitung, darum direkt am Feld */}
+        <div>
+          <label className="pd-label">Routen</label>
+          <div className="space-y-2">
+            <button onClick={undoWaypoint} disabled={!selPlayer?.route.length} className="pd-btn w-full">
+              ↶ Wegpunkt zurück
+            </button>
+            <button onClick={clearRoute} disabled={!selPlayer} className="pd-btn w-full">
+              ✕ Route löschen {selPlayer ? `(${selPlayer.pos})` : ''}
+            </button>
+            <button onClick={clearAll} className="pd-btn w-full">✕ Alle Routen</button>
+          </div>
+        </div>
+
+        <div className="text-[11px] text-mute leading-relaxed border-t border-line pt-3">
+          <strong className="text-ink">So geht&apos;s</strong>
+          <ol className="list-decimal list-inside space-y-1 mt-1.5">
+            <li>Spielzug aus dem Playbook laden — oder selbst zeichnen.</li>
+            <li>Spieler antippen, dann ins Feld tippen = Wegpunkt.</li>
+            <li>Spieler ziehen verschiebt die Startposition.</li>
+            <li>Auf <strong className="text-ink">▶ Simulieren</strong> tippen.</li>
+          </ol>
+          <p className="text-warn mt-2">Die Defense stellt sich automatisch auf deine Formation ein.</p>
         </div>
       </div>
 
@@ -1266,6 +1471,27 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
         }
         .pd-tag-pass { background: rgba(59, 130, 246, 0.18); color: #93c5fd; }
         .pd-tag-run { background: rgba(34, 197, 94, 0.18); color: #86efac; }
+        .pd-scroll::-webkit-scrollbar { width: 6px; }
+        .pd-scroll::-webkit-scrollbar-thumb {
+          background: #1f2a44;
+          border-radius: 999px;
+        }
+        .pd-kbd {
+          font-family: var(--font-jetbrains), monospace;
+          font-size: 0.6rem;
+          padding: 0.1rem 0.3rem;
+          border: 1px solid #1f2a44;
+          border-radius: 0.25rem;
+          background: rgba(0, 0, 0, 0.35);
+        }
+        /* Auf Touch-Geräten sind die Bedienelemente sonst zu klein zum Treffen. */
+        @media (pointer: coarse) {
+          .pd-select,
+          .pd-btn,
+          .pd-play {
+            min-height: 44px;
+          }
+        }
       `}</style>
     </div>
   );

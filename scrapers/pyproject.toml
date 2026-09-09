@@ -12,3 +12,10 @@ dependencies = [
     "feedparser>=6.0.11",
     "deep-translator>=1.11.4",
 ]
+
+# Dieses Projekt liefert kein eigenes Paket aus, es buendelt nur die
+# Abhaengigkeiten. Ohne diese Zeile versucht setuptools die Module im
+# Flat-Layout automatisch zu erkennen und bricht ab:
+#   "Multiple top-level modules discovered in a flat-layout"
+[tool.setuptools]
+py-modules = []

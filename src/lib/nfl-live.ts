@@ -289,6 +289,121 @@ export async function getQbStats(teamAbbr: string): Promise<Player> {
   }
 }
 
+/* ------------------------------ Team-Übersicht ---------------------------- */
+
+export type TeamGame = {
+  week: number | null;
+  date: string | null;
+  state: 'pre' | 'in' | 'post';
+  opponent: string;        // normalisiertes Kürzel des Gegners
+  opponentName: string;
+  opponentLogo: string | null;
+  home: boolean;
+  teamScore: number | null;
+  opponentScore: number | null;
+  venue: string;
+};
+
+export type TeamOverview = {
+  id: string;
+  name: string;
+  shortName: string;
+  logo: string | null;
+  color: string;
+  /** z.B. "1st in AFC West" */
+  standingSummary: string;
+  record: string;          // "0-0"
+  wins: number;
+  losses: number;
+  ties: number;
+  pointsFor: number;
+  pointsAgainst: number;
+  next: TeamGame | null;
+  last: TeamGame | null;
+  upcoming: TeamGame[];    // die nächsten Spiele inkl. `next`
+};
+
+/** Wandelt ein ESPN-Schedule-Event in unser TeamGame um (aus Sicht von `teamAbbr`). */
+function toTeamGame(event: any, teamAbbr: string): TeamGame | null {
+  const comp = event?.competitions?.[0];
+  const competitors = comp?.competitors ?? [];
+  if (competitors.length !== 2) return null;
+
+  const espnCode = denormalizeAbbr(teamAbbr);
+  const me = competitors.find(
+    (c: any) => c.team?.abbreviation === espnCode || normalizeAbbr(c.team?.abbreviation ?? '') === teamAbbr
+  );
+  const other = competitors.find((c: any) => c !== me);
+  if (!me || !other) return null;
+
+  const score = (c: any) => {
+    const raw = c?.score?.value ?? c?.score?.displayValue ?? c?.score;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  return {
+    week: event.week?.number ?? null,
+    date: event.date ?? null,
+    state: comp?.status?.type?.state ?? 'pre',
+    opponent: normalizeAbbr(other.team?.abbreviation ?? '???'),
+    opponentName: other.team?.displayName ?? other.team?.name ?? '',
+    opponentLogo: other.team?.logos?.[0]?.href ?? other.team?.logo ?? null,
+    home: me.homeAway === 'home',
+    teamScore: score(me),
+    opponentScore: score(other),
+    venue: comp?.venue?.fullName ?? '',
+  };
+}
+
+/**
+ * Alles, was die Startseiten-Kacheln über ein Team brauchen: Bilanz,
+ * Divisions-Platzierung, nächstes und letztes Spiel sowie der Spielplan.
+ * Zwei ESPN-Aufrufe (Team + Schedule), beide server-seitig gecacht.
+ */
+export async function getTeamOverview(teamAbbr: string): Promise<TeamOverview | null> {
+  const code = denormalizeAbbr(teamAbbr);
+  const [teamData, schedData] = await Promise.all([
+    getJSON(`${SITE}/teams/${code}`, 60 * 15),
+    getJSON(`${SITE}/teams/${code}/schedule`, 60 * 60),
+  ]);
+
+  const t = teamData?.team;
+  if (!t) return null;
+
+  const total = (t.record?.items ?? []).find((i: any) => i.type === 'total') ?? t.record?.items?.[0];
+  const stat = (name: string) => {
+    const s = (total?.stats ?? []).find((x: any) => x.name === name);
+    const n = Number(s?.value);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const games = (schedData?.events ?? [])
+    .map((e: any) => toTeamGame(e, teamAbbr))
+    .filter(Boolean) as TeamGame[];
+
+  const played = games.filter((g) => g.state === 'post');
+  const upcoming = games.filter((g) => g.state !== 'post');
+
+  return {
+    id: teamAbbr,
+    name: t.displayName ?? '',
+    shortName: t.name ?? '',
+    logo: t.logos?.[0]?.href ?? null,
+    color: t.color ? `#${t.color}` : '#3b82f6',
+    standingSummary: t.standingSummary ?? '',
+    record: total?.summary ?? '0-0',
+    wins: stat('wins'),
+    losses: stat('losses'),
+    ties: stat('ties'),
+    pointsFor: stat('pointsFor'),
+    pointsAgainst: stat('pointsAgainst'),
+    next: upcoming[0] ?? null,
+    last: played[played.length - 1] ?? null,
+    upcoming: upcoming.slice(0, 5),
+  };
+}
+
 /* ---------------------------------- Leaders ------------------------------- */
 
 export type StatLeader = {

@@ -4,7 +4,7 @@ const cspHeader = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://plausible.io;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  img-src 'self' blob: data: https://*.supabase.co https://*.nfl.com https://a.espncdn.com https://images.unsplash.com https://sleepercdn.com https://r2.thesportsdb.com https://img.youtube.com https://i.ytimg.com;
+  img-src 'self' blob: data: https://*.supabase.co https://*.nfl.com https://*.espncdn.com https://*.espn.com https://espnmedia-cdn.akamaized.net https://images.unsplash.com https://sleepercdn.com https://r2.thesportsdb.com https://img.youtube.com https://i.ytimg.com;
   font-src 'self' https://fonts.gstatic.com;
   connect-src 'self' https://*.supabase.co wss://*.supabase.co wss: https:;
   object-src 'none';
@@ -28,7 +28,10 @@ const nextConfig = {
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'static.www.nfl.com' },
-      { protocol: 'https', hostname: 'a.espncdn.com' },
+      // ESPN liefert News-Bilder von mehreren Hosts aus, nicht nur a.espncdn.com.
+      { protocol: 'https', hostname: '**.espncdn.com' },
+      { protocol: 'https', hostname: '**.espn.com' },
+      { protocol: 'https', hostname: 'espnmedia-cdn.akamaized.net' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'sleepercdn.com' },
       { protocol: 'https', hostname: 'r2.thesportsdb.com' },

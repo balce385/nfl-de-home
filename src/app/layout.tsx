@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Playfair_Display, Manrope, JetBrains_Mono } from 'next/font/google';
 import ShaderWallpaper from '@/components/ShaderWallpaper';
+import { TeamSelectionProvider } from '@/components/TeamSelectionContext';
 import './globals.css';
 
 const playfair = Playfair_Display({
@@ -64,8 +65,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-body bg-bg text-ink antialiased">
         {/* Animierter WebGL-Hintergrund (fixiert, hinter allem, blockiert keine Klicks) */}
         <ShaderWallpaper variant="aurora" />
-        {/* Inhalt liegt über dem Shader */}
-        <div style={{ position: 'relative', zIndex: 1 }}>{children}</div>
+        {/* Inhalt liegt über dem Shader. Die Team-Wahl gilt seitenübergreifend
+            (Startseite, Magazin) und wird im Browser gespeichert. */}
+        <TeamSelectionProvider>
+          <div style={{ position: 'relative', zIndex: 1 }}>{children}</div>
+        </TeamSelectionProvider>
       </body>
     </html>
   );

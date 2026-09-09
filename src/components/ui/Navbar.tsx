@@ -12,7 +12,6 @@ const navItems = [
   { href: '/community', label: 'Community' },
   { href: '/news', label: 'News' },
   { href: '/playbook', label: 'Playbook' },
-  { href: '/preise', label: 'Preise' },
 ];
 
 export function Navbar() {
