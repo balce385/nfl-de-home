@@ -31,7 +31,11 @@ YEAR = datetime.now().year
 # optional=True: Ausfall wird gemeldet, laesst den Lauf aber gruen. Nur fuer
 # Quellen, die dauerhaft blocken und durch eine andere Quelle abgedeckt sind.
 STEPS = [
-    ("TheSportsDB Teams",          thesportsdb_teams.run,              {}, False),
+    # Die 32 NFL-Teams aendern sich praktisch nie und stehen bereits in der DB.
+    # Ein voruebergehender 503 bei TheSportsDB soll den Lauf deshalb nicht rot
+    # faerben — fehlende Teams faellt ohnehin sofort ueber die Fremdschluessel
+    # der abhaengigen Scraper auf.
+    ("TheSportsDB Teams",          thesportsdb_teams.run,              {}, True),
     ("Sleeper Players (base)",     sleeper_players.run,                {}, False),
     ("nflverse Rosters (enrich)",  nflverse_releases.run_rosters,      {"season": YEAR}, False),
     ("ESPN Schedule",              espn_schedule.run,                  {}, False),
