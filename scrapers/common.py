@@ -29,6 +29,20 @@ USER_AGENT = os.getenv("USER_AGENT", "")
 DELAY = float(os.getenv("SCRAPE_DELAY_SECONDS", "3.5"))
 
 
+# ESPN nutzt fuer zwei Teams andere Kuerzel als unsere teams-Tabelle
+# (die von TheSportsDB stammt). Ohne Abgleich scheitert jeder Insert am
+# Fremdschluessel: 'Key (away_team_id)=(WSH) is not present in table "teams"'.
+# Das Frontend macht dieselbe Zuordnung in src/lib/nfl-live.ts.
+ESPN_ABBR_MAP = {"WSH": "WAS", "LA": "LAR"}
+
+
+def normalize_abbr(abbr: str | None) -> str | None:
+    """ESPN-Teamkuerzel auf das Kuerzel unserer teams-Tabelle abbilden."""
+    if not abbr:
+        return abbr
+    return ESPN_ABBR_MAP.get(abbr, abbr)
+
+
 def current_season(today: date | None = None) -> int:
     """NFL-Saisonjahr: ab März zählt das laufende Kalenderjahr als neue Saison."""
     d = today or date.today()

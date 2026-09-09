@@ -8,7 +8,7 @@ Parameter (Stand 2026, verifiziert):
   week=N            → Spielwoche
 Ohne Parameter liefert die API die aktuelle Woche.
 """
-from .common import fetch_json, upsert
+from .common import fetch_json, upsert, normalize_abbr
 
 SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
 
@@ -41,8 +41,8 @@ def to_game_row(event: dict) -> dict | None:
         "id": event["id"],
         "season": event.get("season", {}).get("year"),
         "week": event.get("week", {}).get("number"),
-        "home_team_id": home.get("team", {}).get("abbreviation"),
-        "away_team_id": away.get("team", {}).get("abbreviation"),
+        "home_team_id": normalize_abbr(home.get("team", {}).get("abbreviation")),
+        "away_team_id": normalize_abbr(away.get("team", {}).get("abbreviation")),
         "home_score": int(home.get("score") or 0),
         "away_score": int(away.get("score") or 0),
         "kickoff": event.get("date"),
