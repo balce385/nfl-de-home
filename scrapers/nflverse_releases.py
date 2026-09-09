@@ -18,7 +18,7 @@ import re
 from typing import Iterable
 from datetime import datetime
 import httpx
-from .common import upsert, USER_AGENT, supabase_admin
+from .common import upsert, client_headers, supabase_admin
 
 BASE = "https://github.com/nflverse/nflverse-data/releases/download"
 
@@ -36,7 +36,7 @@ def _fetch_csv(release: str, name: str, gzipped: bool = False) -> str:
     if year:
         names.append(name.replace(year.group(0), str(int(year.group(0)) - 1)))
 
-    with httpx.Client(timeout=120, headers={"User-Agent": USER_AGENT},
+    with httpx.Client(timeout=120, headers=client_headers(),
                       follow_redirects=True) as c:
         for i, candidate in enumerate(names):
             url = f"{BASE}/{release}/{candidate}{suffix}"

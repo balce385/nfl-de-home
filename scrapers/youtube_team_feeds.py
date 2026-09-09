@@ -63,7 +63,7 @@ def _extract_video_id(url: str) -> str | None:
 def _fetch_team(team_id: str, channel_id: str) -> list[dict]:
     """Hole letzte 15 Videos via RSS-Feed des Channels."""
     url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
-    feed = feedparser.parse(url, agent=USER_AGENT)
+    feed = feedparser.parse(url, agent=USER_AGENT or None)
     if not feed.get("entries"):
         print(f"  [WARN] {team_id}: kein Feed (channel_id={channel_id})")
         return []

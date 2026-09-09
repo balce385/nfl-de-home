@@ -10,15 +10,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ESPN beantwortet Anfragen mit einem Bot-artigen User-Agent seit August 2026
-# mit 403 Forbidden — dieselbe URL liefert mit Browser-Kennung 200. Deshalb hier
-# eine echte Browser-Kennung. Rücksichtsvoll bleiben wir über DELAY, nicht über
-# den User-Agent.
-USER_AGENT = os.getenv(
-    "USER_AGENT",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-)
+# Kein eigener User-Agent per Default — httpx schickt dann seinen eigenen
+# ("python-httpx/x.y"), und genau den akzeptiert ESPN.
+#
+# Gemessen am 2026-09-09 gegen site.api.espn.com/.../scoreboard:
+#   python-httpx/0.28.1 -> 200      curl/8.5.0 -> 200
+#   NFL-DE-Hub-Scraper/0.2 -> 403   Mozilla/5.0 (Browser-Fake) -> 403
+#   node -> 403                     MeinBot/1.0 -> 403
+# ESPN blockt also selbstgewaehlte Namen und gefaelschte Browser-Kennungen,
+# nicht aber die ehrliche Kennung der HTTP-Bibliothek. Eine Browser-Kennung
+# vorzutaeuschen macht es nachweislich schlimmer.
+# Ueber die Umgebungsvariable USER_AGENT laesst sich das bei Bedarf setzen.
+USER_AGENT = os.getenv("USER_AGENT", "")
 
 # Sports-Reference erlaubt max. 20 Requests/Minute — darüber droht bis zu
 # 24h "Jail" (HTTP 429). 3.5s Delay = ~17 req/min, sicher unter dem Limit.
@@ -48,13 +51,21 @@ def _is_retryable(exc: BaseException) -> bool:
     return isinstance(exc, (httpx.TransportError, httpx.TimeoutException))
 
 
+def client_headers(extra: dict[str, str] | None = None) -> dict[str, str]:
+    """Header-Satz; ohne gesetzten USER_AGENT bleibt httpx' eigene Kennung stehen."""
+    h = dict(extra or {})
+    if USER_AGENT:
+        h["User-Agent"] = USER_AGENT
+    return h
+
+
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(min=5, max=60),
     retry=retry_if_exception(_is_retryable),
 )
 def fetch(url: str, params: dict | None = None) -> str:
-    headers = {"User-Agent": USER_AGENT, "Accept-Language": "en-US,en;q=0.8"}
+    headers = client_headers({"Accept-Language": "en-US,en;q=0.8"})
     with httpx.Client(timeout=20, headers=headers, follow_redirects=True) as c:
         r = c.get(url, params=params)
         r.raise_for_status()
@@ -68,7 +79,7 @@ def fetch(url: str, params: dict | None = None) -> str:
     retry=retry_if_exception(_is_retryable),
 )
 def fetch_json(url: str, params: dict | None = None) -> Any:
-    headers = {"User-Agent": USER_AGENT}
+    headers = client_headers()
     with httpx.Client(timeout=20, headers=headers, follow_redirects=True) as c:
         r = c.get(url, params=params)
         r.raise_for_status()

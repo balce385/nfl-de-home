@@ -4,7 +4,7 @@ Quelle: https://www.thesportsdb.com/api/v1/json/3/search_all_teams.php?l=NFL
 Lizenz: Free for non-commercial / educational; "key 3" ist der public-test-key.
 """
 import httpx
-from .common import upsert, USER_AGENT
+from .common import upsert, client_headers
 
 URL = "https://www.thesportsdb.com/api/v1/json/3/search_all_teams.php?l=NFL"
 
@@ -37,7 +37,7 @@ DIVISIONS = {
 
 def run():
     print(f"TheSportsDB NFL: lade Teams …")
-    with httpx.Client(timeout=30, headers={"User-Agent": USER_AGENT}) as c:
+    with httpx.Client(timeout=30, headers=client_headers()) as c:
         r = c.get(URL)
         r.raise_for_status()
         data = r.json()

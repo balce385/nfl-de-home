@@ -7,7 +7,7 @@ Wir nutzen die GSIS-ID (= nflverse player_id) als primären players.id, damit
 die nflverse-Stats sauber per Foreign-Key referenzieren können.
 """
 import httpx
-from .common import upsert, USER_AGENT, supabase_admin
+from .common import upsert, client_headers, supabase_admin
 
 URL = "https://api.sleeper.app/v1/players/nfl"
 
@@ -37,7 +37,7 @@ def _known_teams() -> set[str]:
 
 def run():
     print(f"Sleeper Players: lade {URL} …")
-    with httpx.Client(timeout=60, headers={"User-Agent": USER_AGENT}) as c:
+    with httpx.Client(timeout=60, headers=client_headers()) as c:
         r = c.get(URL)
         r.raise_for_status()
         data = r.json()

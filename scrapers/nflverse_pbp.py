@@ -18,7 +18,7 @@ import io
 from collections import defaultdict
 from typing import Iterable
 import httpx
-from .common import upsert, USER_AGENT, supabase_admin
+from .common import upsert, client_headers, supabase_admin
 
 PBP_URL_TPL = "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{season}.csv.gz"
 
@@ -46,7 +46,7 @@ def fetch_pbp_csv(season: int) -> str:
     gelaufen ist. Vor dem Saisonstart liefert der Download 404 — dann sind die
     Zahlen der Vorsaison die richtige Antwort, kein Fehlerfall.
     """
-    with httpx.Client(timeout=180, headers={"User-Agent": USER_AGENT},
+    with httpx.Client(timeout=180, headers=client_headers(),
                       follow_redirects=True) as c:
         for candidate in (season, season - 1):
             url = PBP_URL_TPL.format(season=candidate)
