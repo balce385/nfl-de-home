@@ -37,7 +37,14 @@ const nextConfig = {
     ],
   },
   experimental: {
-    serverActions: { allowedOrigins: ['localhost:3000'] },
+    serverActions: {
+      allowedOrigins: [
+        'localhost:3000',
+        'nfl.2-56-97-83.sslip.io',
+        'nfl-fan-app.de',
+        'www.nfl-fan-app.de',
+      ],
+    },
   },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
