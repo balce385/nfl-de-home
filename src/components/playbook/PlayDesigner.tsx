@@ -13,10 +13,22 @@
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { getTeamPlays, CONCEPT_MAP, type Concept } from '@/data/playbook-plays';
+import {
+  CAM_PRESETS,
+  type CamKey,
+  applyCamPreset,
+  project,
+  unproject,
+  FIELD_W,
+  VIEW_TOP,
+  VIEW_BOT,
+  GOAL_Y,
+  W,
+  H,
+  type Pt,
+} from '@/lib/playbook-camera';
 
 export type PdTeam = { id: string; name: string; color: string; altColor: string };
-
-type Pt = { x: number; y: number };
 type OffPos = 'QB' | 'RB' | 'FB' | 'WR' | 'TE' | 'C' | 'G' | 'T';
 type DefPos = 'DE' | 'DT' | 'LB' | 'CB' | 'NB' | 'FS' | 'SS';
 
@@ -36,42 +48,8 @@ type Player = {
 };
 
 /* ------------------------------- Geometrie -------------------------------- */
+// Feldmaße, Kamera und Projektion liegen in @/lib/playbook-camera (dort getestet).
 
-const FIELD_W = 53.3;
-const VIEW_TOP = -33; // Yards downfield (oben/fern)
-const VIEW_BOT = 12; // Backfield (unten/nah)
-const GOAL_Y = -25; // Torlinie
-const W = 980;
-const H = 600;
-
-// Perspektivische 3D-Kamera (Pinhole, Bodenebene). z = Höhe über dem Rasen.
-//
-// `back` = Abstand hinter dem Backfield, `height` = Kamerahöhe in Yards,
-// `focal` = Brennweite (Pixel), `horizon` = Bildhöhe des Fluchtpunkts.
-// Die Blickwinkel entsprechen den üblichen TV- und Coaching-Perspektiven.
-export type CamKey = 'broadcast' | 'sideline' | 'endzone' | 'all22';
-
-const CAM_PRESETS: Record<CamKey, { label: string; hint: string; back: number; height: number; focal: number; horizon: number }> = {
-  broadcast: { label: 'Broadcast', hint: 'Klassische TV-Perspektive', back: 15, height: 24, focal: 270, horizon: 120 },
-  sideline: { label: 'Seitenlinie', hint: 'Flach und nah am Rasen', back: 7, height: 11, focal: 340, horizon: 210 },
-  endzone: { label: 'Endzone', hint: 'Hinter dem Quarterback', back: 27, height: 33, focal: 245, horizon: 92 },
-  all22: { label: 'All-22', hint: 'Coaching-Sicht von oben', back: 5, height: 60, focal: 205, horizon: 26 },
-};
-
-// Wird vom Kamera-Umschalter im UI überschrieben; die Zeichenschleife liest live mit.
-const CAM = { ...CAM_PRESETS.broadcast, cx: W / 2, zoom: 1 };
-
-function project(x: number, y: number, z = 0) {
-  const depth = VIEW_BOT - y + CAM.back; // > 0
-  const s = (CAM.focal * CAM.zoom) / depth;
-  return { X: CAM.cx + x * s, Y: CAM.horizon + (CAM.height - z) * s, s };
-}
-function unproject(X: number, Y: number): Pt | null {
-  const s = (Y - CAM.horizon) / CAM.height;
-  if (s <= 0.0001) return null;
-  const depth = (CAM.focal * CAM.zoom) / s;
-  return { x: (X - CAM.cx) / s, y: VIEW_BOT - (depth - CAM.back) };
-}
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
 const hashAt = (id: string) => {
   let h = 0;
@@ -1098,12 +1076,7 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
 
   // Kamerawerte in das von der Zeichenschleife gelesene CAM-Objekt spiegeln.
   useEffect(() => {
-    const p = CAM_PRESETS[camKey];
-    CAM.back = p.back;
-    CAM.height = p.height;
-    CAM.focal = p.focal;
-    CAM.horizon = p.horizon;
-    CAM.zoom = zoom;
+    applyCamPreset(camKey, zoom);
     rerender();
     // rerender ist stabil genug (nur setState-Wrapper); bewusst nicht in den Deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1290,8 +1263,8 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
             <span className="font-mono">Zoom</span>
             <input
               type="range"
-              min={0.75}
-              max={1.6}
+              min={0.85}
+              max={1.25}
               step={0.05}
               value={zoom}
               onChange={(e) => setZoom(Number(e.target.value))}
