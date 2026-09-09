@@ -40,16 +40,27 @@ def _to_int(v) -> int:
 
 
 def fetch_pbp_csv(season: int) -> str:
-    url = PBP_URL_TPL.format(season=season)
-    print(f"nflverse PBP {season}: lade {url} …")
+    """Laedt die Play-by-Play-Daten, notfalls die der Vorsaison.
+
+    nflverse veroeffentlicht die Datei einer Saison erst, wenn das erste Spiel
+    gelaufen ist. Vor dem Saisonstart liefert der Download 404 — dann sind die
+    Zahlen der Vorsaison die richtige Antwort, kein Fehlerfall.
+    """
     with httpx.Client(timeout=180, headers={"User-Agent": USER_AGENT},
                       follow_redirects=True) as c:
-        r = c.get(url)
-        r.raise_for_status()
-        raw = gzip.decompress(r.content).decode("utf-8", errors="replace")
-        size_mb = len(raw) / 1024 / 1024
-        print(f"  ↳ entpackt: {size_mb:.1f} MB")
-        return raw
+        for candidate in (season, season - 1):
+            url = PBP_URL_TPL.format(season=candidate)
+            print(f"nflverse PBP {candidate}: lade {url} …")
+            r = c.get(url)
+            if r.status_code == 404 and candidate != season - 1:
+                print(f"  ↳ {candidate} noch nicht veroeffentlicht, versuche {candidate - 1}")
+                continue
+            r.raise_for_status()
+            raw = gzip.decompress(r.content).decode("utf-8", errors="replace")
+            size_mb = len(raw) / 1024 / 1024
+            print(f"  ↳ entpackt: {size_mb:.1f} MB (Saison {candidate})")
+            return raw
+    raise RuntimeError("unerreichbar")  # pragma: no cover
 
 
 def aggregate(csv_text: str, season: int, valid_player_ids: set[str] | None = None) -> list[dict]:

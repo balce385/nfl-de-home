@@ -13,6 +13,7 @@ FK-Abhaengigkeiten:
   9.  team_videos        (YouTube RSS pro Team-Channel)
   10. articles           (NFL.com + ESPN, Auto-Uebersetzung)
 """
+import sys
 from datetime import datetime
 from . import espn_schedule
 from . import pfr_stats
@@ -26,18 +27,23 @@ from . import youtube_team_feeds
 
 YEAR = datetime.now().year
 
+# (Name, Funktion, kwargs, optional)
+# optional=True: Ausfall wird gemeldet, laesst den Lauf aber gruen. Nur fuer
+# Quellen, die dauerhaft blocken und durch eine andere Quelle abgedeckt sind.
 STEPS = [
-    ("TheSportsDB Teams",          thesportsdb_teams.run,              {}),
-    ("Sleeper Players (base)",     sleeper_players.run,                {}),
-    ("nflverse Rosters (enrich)",  nflverse_releases.run_rosters,      {"season": YEAR}),
-    ("ESPN Schedule",              espn_schedule.run,                  {}),
-    ("nflverse Depth Charts",      nflverse_releases.run_depth_charts, {"season": YEAR}),
-    ("nflverse PBP (EPA/CPOE)",    nflverse_pbp.run,                   {"season": YEAR}),
-    ("nflverse Snap Counts",       nflverse_releases.run_snap_counts,  {"season": YEAR}),
-    ("nflverse Injuries",          nflverse_releases.run_injuries,     {"season": YEAR}),
-    ("YouTube Team-Feeds",         youtube_team_feeds.run,             {}),
-    ("PFR Stats (HTML-fallback)",  pfr_stats.run,                      {}),
-    ("News (NFL.com+ESPN, DE)",    nfl_news.run,                       {}),
+    ("TheSportsDB Teams",          thesportsdb_teams.run,              {}, False),
+    ("Sleeper Players (base)",     sleeper_players.run,                {}, False),
+    ("nflverse Rosters (enrich)",  nflverse_releases.run_rosters,      {"season": YEAR}, False),
+    ("ESPN Schedule",              espn_schedule.run,                  {}, False),
+    ("nflverse Depth Charts",      nflverse_releases.run_depth_charts, {"season": YEAR}, False),
+    ("nflverse PBP (EPA/CPOE)",    nflverse_pbp.run,                   {"season": YEAR}, False),
+    ("nflverse Snap Counts",       nflverse_releases.run_snap_counts,  {"season": YEAR}, False),
+    ("nflverse Injuries",          nflverse_releases.run_injuries,     {"season": YEAR}, False),
+    ("YouTube Team-Feeds",         youtube_team_feeds.run,             {}, False),
+    # Pro-Football-Reference sperrt Server-IPs per 403. Die Zahlen kommen sonst
+    # aus nflverse, deshalb kein harter Fehler.
+    ("PFR Stats (HTML-fallback)",  pfr_stats.run,                      {}, True),
+    ("News (NFL.com+ESPN, DE)",    nfl_news.run,                       {}, False),
 ]
 
 
@@ -46,7 +52,8 @@ def main():
     print(f"  NFL-DE-Hub Scraper Run -- {datetime.now().isoformat()}")
     print("=" * 60)
     results = []
-    for name, fn, kwargs in STEPS:
+    hard_failures = []
+    for name, fn, kwargs, optional in STEPS:
         print(f"\n-- {name} --")
         try:
             fn(**kwargs)
@@ -54,6 +61,8 @@ def main():
         except Exception as e:
             print(f"  [FAIL] {name}: {type(e).__name__}: {e}")
             results.append((name, f"FAIL: {type(e).__name__}"))
+            if not optional:
+                hard_failures.append(name)
 
     print()
     print("=" * 60)
@@ -63,6 +72,12 @@ def main():
         marker = "OK  " if status == "OK" else "FAIL"
         print(f"  [{marker}]  {name:35s} {status}")
     print()
+
+    # Ohne diesen Exit meldet GitHub Actions den Lauf gruen, obwohl Scraper
+    # ausgefallen sind — genau so blieben die Daten monatelang unbemerkt alt.
+    if hard_failures:
+        print(f"  {len(hard_failures)} Scraper fehlgeschlagen: {', '.join(hard_failures)}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

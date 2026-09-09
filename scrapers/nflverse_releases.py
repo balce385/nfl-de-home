@@ -14,6 +14,7 @@ Primary-Player-Key, was unserem players.id entspricht.
 import csv
 import gzip
 import io
+import re
 from typing import Iterable
 from datetime import datetime
 import httpx
@@ -23,16 +24,32 @@ BASE = "https://github.com/nflverse/nflverse-data/releases/download"
 
 
 def _fetch_csv(release: str, name: str, gzipped: bool = False) -> str:
+    """Laedt eine nflverse-Datei; faellt bei 404 auf die Vorsaison zurueck.
+
+    Die Dateien einer Saison erscheinen erst nach dem ersten Spieltag. Steht im
+    Namen ein Jahr, wird deshalb einmal mit dem Vorjahr nachgefragt, statt den
+    ganzen Lauf scheitern zu lassen.
+    """
     suffix = ".csv.gz" if gzipped else ".csv"
-    url = f"{BASE}/{release}/{name}{suffix}"
-    print(f"  nflverse: lade {url} ...")
+    names = [name]
+    year = re.search(r"(19|20)\d{2}", name)
+    if year:
+        names.append(name.replace(year.group(0), str(int(year.group(0)) - 1)))
+
     with httpx.Client(timeout=120, headers={"User-Agent": USER_AGENT},
                       follow_redirects=True) as c:
-        r = c.get(url)
-        r.raise_for_status()
-        if gzipped:
-            return gzip.decompress(r.content).decode("utf-8", errors="replace")
-        return r.text
+        for i, candidate in enumerate(names):
+            url = f"{BASE}/{release}/{candidate}{suffix}"
+            print(f"  nflverse: lade {url} ...")
+            r = c.get(url)
+            if r.status_code == 404 and i < len(names) - 1:
+                print("  ↳ noch nicht veroeffentlicht, versuche Vorsaison")
+                continue
+            r.raise_for_status()
+            if gzipped:
+                return gzip.decompress(r.content).decode("utf-8", errors="replace")
+            return r.text
+    raise RuntimeError("unerreichbar")  # pragma: no cover
 
 
 def _known_player_ids() -> set[str]:
