@@ -4,7 +4,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nfl-de-hub.example
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
-  const routes = ['', '/news', '/playbook', '/magazin', '/community'];
+  const routes = ['', '/news', '/playbook', '/magazin', '/community', '/stats'];
   return routes.map((path) => ({
     url: `${SITE_URL}${path}`,
     lastModified: now,

@@ -11,6 +11,7 @@ const navItems = [
   { href: '/magazin', label: 'Magazin' },
   { href: '/community', label: 'Community' },
   { href: '/news', label: 'News' },
+  { href: '/stats', label: 'Stats' },
   { href: '/playbook', label: 'Playbook' },
 ];
 
