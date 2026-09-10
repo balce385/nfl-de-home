@@ -23,6 +23,7 @@ from . import nflverse_pbp
 from . import nflverse_releases
 from . import thesportsdb_teams
 from . import youtube_team_feeds
+from . import nflverse_ngs
 
 
 YEAR = datetime.now().year
@@ -43,6 +44,7 @@ STEPS = [
     ("nflverse PBP (EPA/CPOE)",    nflverse_pbp.run,                   {"season": YEAR}, False),
     ("nflverse Snap Counts",       nflverse_releases.run_snap_counts,  {"season": YEAR}, False),
     ("nflverse Injuries",          nflverse_releases.run_injuries,     {"season": YEAR}, False),
+    ("Next Gen Stats",             nflverse_ngs.run,                   {"season": YEAR}, False),
     ("YouTube Team-Feeds",         youtube_team_feeds.run,             {}, False),
     # Pro-Football-Reference sperrt Server-IPs per 403. Die Zahlen kommen sonst
     # aus nflverse, deshalb kein harter Fehler.
