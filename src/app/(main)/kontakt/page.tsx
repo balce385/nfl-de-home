@@ -5,6 +5,7 @@ import { siteOwner } from '@/data/site-owner';
 export const metadata = {
   title: 'Kontakt',
   description: 'Fehler melden, Fragen stellen oder Auskunft nach DSGVO anfordern.',
+  alternates: { canonical: '/kontakt' },
 };
 
 const wege = [

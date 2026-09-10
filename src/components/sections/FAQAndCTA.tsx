@@ -21,8 +21,24 @@ const faqs = [
 ];
 
 export function FAQSection() {
+  // Google zeigt FAQ-Rich-Results nur, wenn das Schema exakt den sichtbaren
+  // Text spiegelt — darum aus demselben `faqs`-Array erzeugt.
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.q,
+      acceptedAnswer: { '@type': 'Answer', text: faq.a },
+    })),
+  };
+
   return (
     <section className="py-24 border-t border-line bg-black/20">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <div className="max-w-3xl mx-auto px-6">
         <div className="text-center mb-12">
           <span className="chip">FAQ</span>

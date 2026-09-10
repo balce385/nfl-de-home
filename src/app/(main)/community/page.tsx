@@ -3,6 +3,9 @@ import { ChatRoom } from './ChatRoom';
 
 export const metadata = {
   title: 'Community — der NFL-Treffpunkt für DACH',
+  description:
+    'Diskutiere Spieltage, Trades und Fantasy-Entscheidungen mit NFL-Fans aus Deutschland, Österreich und der Schweiz.',
+  alternates: { canonical: '/community' },
 };
 
 export default async function CommunityPage() {

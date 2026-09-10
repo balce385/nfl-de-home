@@ -5,6 +5,7 @@ export const metadata = {
   title: 'Über dieses Projekt',
   description:
     'Wer hinter dem NFL-DE-Hub steckt, woher die Daten kommen und was das Projekt ausdrücklich nicht ist.',
+  alternates: { canonical: '/about' },
 };
 
 export default function AboutPage() {

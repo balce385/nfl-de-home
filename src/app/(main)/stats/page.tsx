@@ -6,6 +6,7 @@ export const metadata = {
   title: 'Advanced Stats — Passer Rating, CPOE, Separation & Next Gen Stats',
   description:
     'Passer Rating, CPOE, Time to Throw, Separation, YAC über Erwartung und 8+ in der Box — die Tracking-Daten der NFL für alle Spieler, auf Deutsch erklärt.',
+  alternates: { canonical: '/stats' },
 };
 
 export const revalidate = 900;

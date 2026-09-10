@@ -23,8 +23,10 @@ const jetbrains = JetBrains_Mono({
   weight: ['400', '500', '700'],
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nfl-fan-app.de';
+
 export const metadata: Metadata = {
-  metadataBase: new URL('https://nfl-de-hub.example.com'),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: 'NFL News, Analysen & Fantasy Football auf Deutsch | NFL-DE-Hub',
     template: '%s | NFL-DE-Hub',
@@ -45,15 +47,28 @@ export const metadata: Metadata = {
       'Entdecke die neuesten NFL-News, datengetriebene Analysen und Fantasy-Football-Tools auf Deutsch.',
     locale: 'de_DE',
     type: 'website',
+    url: SITE_URL,
+    images: [
+      {
+        url: '/og.png',
+        width: 1200,
+        height: 630,
+        alt: 'NFL-DE-Hub — NFL News, Analysen und Fantasy Football auf Deutsch',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'NFL auf Deutsch — News, Analysen & Fantasy Football | NFL-DE-Hub',
     description:
       'Aktuelle NFL-News, tiefgehende Analysen und Fantasy-Football-Tools auf Deutsch.',
+    images: ['/og.png'],
   },
-  alternates: { canonical: '/' },
-  robots: { index: true, follow: true },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 },
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -63,6 +78,33 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${playfair.variable} ${manrope.variable} ${jetbrains.variable}`}
     >
       <body className="font-body bg-bg text-ink antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify([
+              {
+                '@context': 'https://schema.org',
+                '@type': 'WebSite',
+                '@id': `${SITE_URL}/#website`,
+                url: SITE_URL,
+                name: 'NFL-DE-Hub',
+                description:
+                  'NFL-News, Analysen, Advanced Stats und Fantasy Football auf Deutsch.',
+                inLanguage: 'de-DE',
+                publisher: { '@id': `${SITE_URL}/#organization` },
+              },
+              {
+                '@context': 'https://schema.org',
+                '@type': 'Organization',
+                '@id': `${SITE_URL}/#organization`,
+                name: 'NFL-DE-Hub',
+                url: SITE_URL,
+                description:
+                  'Deutschsprachiges Portal für NFL-News, Advanced Stats und Fantasy Football.',
+              },
+            ]),
+          }}
+        />
         {/* Animierter WebGL-Hintergrund (fixiert, hinter allem, blockiert keine Klicks) */}
         <ShaderWallpaper variant="aurora" />
         {/* Inhalt liegt über dem Shader. Die Team-Wahl gilt seitenübergreifend

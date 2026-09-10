@@ -4,6 +4,7 @@ export const metadata = {
   title: 'API',
   description:
     'Die öffentlichen JSON-Endpunkte des NFL-DE-Hub: Team-Übersicht, News, Kader, Spielsituation.',
+  alternates: { canonical: '/api-docs' },
 };
 
 /**

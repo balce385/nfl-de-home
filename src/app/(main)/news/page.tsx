@@ -9,9 +9,10 @@ export const metadata = {
   title: 'News — Live-Daten, Standings & Team-Media',
   description:
     'Live-Scoreboard, Power Rankings, Beat Writers und aktuelle News für alle 32 NFL-Teams — direkt von der ESPN-API.',
+  alternates: { canonical: '/news' },
 };
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 export default async function NewsPage() {
   // Live-Daten parallel von der ESPN-API laden (Server-Side, gecacht)

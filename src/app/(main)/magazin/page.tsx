@@ -7,6 +7,7 @@ export const metadata = {
   title: 'Magazin — NFL-Analysen, News und Fantasy auf Deutsch',
   description:
     'Tiefenanalysen, Spieltagsberichte, Fantasy-Tipps und Hintergründe — von der Redaktion des NFL-DE-Hub.',
+  alternates: { canonical: '/magazin' },
 };
 
 export const revalidate = 300;

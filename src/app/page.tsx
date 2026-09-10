@@ -10,7 +10,13 @@ import { FAQSection, CTASection } from '@/components/sections/FAQAndCTA';
 import { TeamMediaExplorer } from '@/components/showcase/TeamMediaExplorer';
 import { getAllTeams } from '@/lib/nfl-live';
 
-export const dynamic = 'force-dynamic';
+export const metadata = {
+  alternates: { canonical: '/' },
+};
+
+// Live-Ticker und Team-Daten sind minutenaktuell genug; ISR statt force-dynamic
+// hält die HTML-Antwort cachebar (schnelle TTFB zählt für das Google-Ranking).
+export const revalidate = 300;
 
 export default async function HomePage() {
   const teams = await getAllTeams();

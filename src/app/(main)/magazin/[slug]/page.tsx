@@ -70,8 +70,25 @@ export default async function ArticlePage({
       })
     : null;
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nfl-fan-app.de';
+  const articleJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: a.title,
+    description: a.excerpt ?? undefined,
+    image: a.cover_url ?? undefined,
+    datePublished: a.published_at ?? undefined,
+    inLanguage: a.language ?? 'de',
+    mainEntityOfPage: `${siteUrl}/magazin/${a.slug}`,
+    publisher: { '@type': 'Organization', name: 'NFL-DE-Hub', url: siteUrl },
+  };
+
   return (
     <div className="max-w-3xl mx-auto px-6 py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
       <Link
         href="/magazin"
         className="inline-flex items-center gap-2 text-sm text-mute hover:text-ink transition mb-8"
@@ -149,14 +166,24 @@ export async function generateMetadata({
   params: { slug: string };
 }) {
   const local = getArticle(params.slug);
-  let a: { title: string; excerpt: string | null; cover_url: string | null } | null = local
-    ? { title: local.title, excerpt: local.excerpt, cover_url: null }
+  let a: {
+    title: string;
+    excerpt: string | null;
+    cover_url: string | null;
+    published_at: string | null;
+  } | null = local
+    ? {
+        title: local.title,
+        excerpt: local.excerpt,
+        cover_url: null,
+        published_at: local.publishedAt ?? null,
+      }
     : null;
   if (!a) {
     const supabase = createClient();
     const { data } = await supabase
       .from('articles')
-      .select('title, excerpt, cover_url')
+      .select('title, excerpt, cover_url, published_at')
       .eq('slug', params.slug)
       .maybeSingle();
     a = data ?? null;
@@ -165,8 +192,13 @@ export async function generateMetadata({
   return {
     title: `${a.title} — NFL DE Hub`,
     description: a.excerpt ?? undefined,
-    openGraph: a.cover_url
-      ? { images: [{ url: a.cover_url }] }
-      : undefined,
+    alternates: { canonical: `/magazin/${params.slug}` },
+    openGraph: {
+      type: 'article',
+      title: a.title,
+      description: a.excerpt ?? undefined,
+      publishedTime: a.published_at ?? undefined,
+      images: a.cover_url ? [{ url: a.cover_url }] : undefined,
+    },
   };
 }

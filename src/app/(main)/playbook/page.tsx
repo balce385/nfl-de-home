@@ -5,9 +5,10 @@ export const metadata = {
   title: 'Playbook — 3D Play-Designer mit KI-Defense',
   description:
     'Lade echte NFL-Konzepte (Four Verticals, Mesh, Wide Zone …) aus den Playbooks aller 32 Teams, entwirf eigene Spielzüge und simuliere sie in 3D gegen eine reagierende KI-Defense.',
+  alternates: { canonical: '/playbook' },
 };
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 export default async function PlaybookPage() {
   const teams = await getAllTeams();
