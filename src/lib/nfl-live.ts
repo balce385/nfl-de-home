@@ -294,6 +294,140 @@ export async function getQbStats(teamAbbr: string): Promise<Player> {
   }
 }
 
+/* --------------------------- Live-Spielsituation -------------------------- */
+
+export type SituationSide = {
+  code: string;
+  name: string;
+  score: number;
+  color: string;
+  logo: string | null;
+  timeouts: number | null;
+};
+
+export type GameSituation = {
+  eventId: string;
+  shortName: string;
+  state: 'pre' | 'in' | 'post';
+  statusText: string;
+  period: number | null;
+  clock: string | null;
+  venue: string;
+  kickoff: string | null;
+  home: SituationSide;
+  away: SituationSide;
+  /** Kürzel des Teams mit dem Ball, solange das Spiel läuft. */
+  possession: string | null;
+  down: number | null;
+  distance: number | null;
+  /** Yard-Linie laut ESPN (0–50 vom jeweiligen Feldende aus gezählt). */
+  yardLine: number | null;
+  downDistanceText: string | null;
+  possessionText: string | null;
+  isRedZone: boolean;
+  /** Siegwahrscheinlichkeit des Heimteams in Prozent. */
+  homeWinPercent: number | null;
+  lastPlay: string | null;
+  drive: { team: string | null; start: string | null; yards: number | null; plays: number | null } | null;
+};
+
+function toSide(c: any): SituationSide {
+  return {
+    code: normalizeAbbr(c?.team?.abbreviation ?? '???'),
+    name: c?.team?.shortDisplayName ?? c?.team?.name ?? '',
+    score: Number(c?.score ?? 0),
+    color: c?.team?.color ? `#${c.team.color}` : '#3b82f6',
+    logo: c?.team?.logo ?? null,
+    timeouts: null,
+  };
+}
+
+/** Baut die Situation aus einem Scoreboard-Event. */
+function buildSituation(event: any): GameSituation | null {
+  const comp = event?.competitions?.[0];
+  const competitors = comp?.competitors ?? [];
+  if (competitors.length !== 2) return null;
+
+  const homeC = competitors.find((c: any) => c.homeAway === 'home') ?? competitors[0];
+  const awayC = competitors.find((c: any) => c.homeAway === 'away') ?? competitors[1];
+  const home = toSide(homeC);
+  const away = toSide(awayC);
+
+  const s = comp.situation;
+  home.timeouts = Number.isFinite(Number(s?.homeTimeouts)) ? Number(s.homeTimeouts) : null;
+  away.timeouts = Number.isFinite(Number(s?.awayTimeouts)) ? Number(s.awayTimeouts) : null;
+
+  // ESPN nennt beim Ballbesitz die numerische Team-ID, nicht das Kürzel.
+  const possessionId = s?.possession != null ? String(s.possession) : null;
+  const possession =
+    possessionId === String(homeC?.team?.id)
+      ? home.code
+      : possessionId === String(awayC?.team?.id)
+      ? away.code
+      : null;
+
+  const winPct = s?.lastPlay?.probability?.homeWinPercentage;
+
+  return {
+    eventId: String(event.id),
+    shortName: event.shortName ?? `${away.code} @ ${home.code}`,
+    state: comp?.status?.type?.state ?? 'pre',
+    statusText: comp?.status?.type?.shortDetail ?? '',
+    period: comp?.status?.period ?? null,
+    clock: comp?.status?.displayClock ?? null,
+    venue: comp?.venue?.fullName ?? '',
+    kickoff: event.date ?? null,
+    home,
+    away,
+    possession,
+    down: Number.isFinite(Number(s?.down)) ? Number(s.down) : null,
+    distance: Number.isFinite(Number(s?.distance)) ? Number(s.distance) : null,
+    yardLine: Number.isFinite(Number(s?.yardLine)) ? Number(s.yardLine) : null,
+    downDistanceText: s?.downDistanceText ?? null,
+    possessionText: s?.possessionText ?? null,
+    isRedZone: Boolean(s?.isRedZone),
+    homeWinPercent: Number.isFinite(Number(winPct)) ? Number(winPct) * 100 : null,
+    lastPlay: s?.lastPlay?.text ?? null,
+    drive: null,
+  };
+}
+
+/** Alle Spiele des aktuellen Spieltags mit ihrer Situation. */
+export async function getGameSituations(): Promise<GameSituation[]> {
+  // Kurzer Cache: bei laufenden Spielen zaehlt jede Sekunde.
+  const data = await getJSON(`${SITE}/scoreboard`, 15);
+  return ((data?.events ?? []).map(buildSituation).filter(Boolean) as GameSituation[]).sort(
+    (a, b) => {
+      // Laufende Spiele zuerst, dann anstehende, dann beendete.
+      const rank = (g: GameSituation) => (g.state === 'in' ? 0 : g.state === 'pre' ? 1 : 2);
+      return rank(a) - rank(b) || (a.kickoff ?? '').localeCompare(b.kickoff ?? '');
+    }
+  );
+}
+
+/**
+ * Situation eines Spiels inklusive laufendem Drive.
+ * Die Drive-Daten stehen nur im Summary-Endpunkt, deshalb ein zweiter Aufruf —
+ * aber nur, wenn das Spiel tatsaechlich laeuft.
+ */
+export async function getGameSituation(eventId?: string): Promise<GameSituation | null> {
+  const all = await getGameSituations();
+  const game = eventId ? all.find((g) => g.eventId === eventId) ?? null : all[0] ?? null;
+  if (!game || game.state !== 'in') return game;
+
+  const summary = await getJSON(`${SITE}/summary?event=${encodeURIComponent(game.eventId)}`, 15);
+  const cur = summary?.drives?.current;
+  if (cur) {
+    game.drive = {
+      team: cur.team?.abbreviation ? normalizeAbbr(cur.team.abbreviation) : null,
+      start: cur.start?.text ?? null,
+      yards: Number.isFinite(Number(cur.yards)) ? Number(cur.yards) : null,
+      plays: Number.isFinite(Number(cur.offensivePlays)) ? Number(cur.offensivePlays) : null,
+    };
+  }
+  return game;
+}
+
 /* ------------------------------ Team-Übersicht ---------------------------- */
 
 export type TeamGame = {

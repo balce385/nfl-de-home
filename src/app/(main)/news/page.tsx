@@ -1,15 +1,17 @@
 import { StadiumScoreboard } from '@/components/showcase/StadiumScoreboard';
 import { TradingCard } from '@/components/showcase/TradingCard';
 import { MagazineCover } from '@/components/showcase/MagazineCover';
-import { DriveTracker } from '@/components/showcase/DriveTracker';
+import { LiveDriveTracker } from '@/components/showcase/LiveDriveTracker';
 import { PowerRankings } from '@/components/showcase/PowerRankings';
 import { HighlightBanner } from '@/components/showcase/HighlightBanner';
 import { TeamMediaExplorer } from '@/components/showcase/TeamMediaExplorer';
+import { TeamNewsFeed } from '@/components/magazin/TeamNewsFeed';
 import {
   getAllTeams,
   getScoreboard,
   getStandings,
   getPassingLeader,
+  getGameSituations,
 } from '@/lib/nfl-live';
 import { fullArticles } from '@/data/articles';
 
@@ -23,11 +25,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function NewsPage() {
   // Live-Daten parallel von der ESPN-API laden (Server-Side, gecacht)
-  const [teams, games, standings, passLeader] = await Promise.all([
+  const [teams, games, standings, passLeader, situations] = await Promise.all([
     getAllTeams(),
     getScoreboard(),
     getStandings(),
     getPassingLeader(),
+    getGameSituations(),
   ]);
 
   const isLive = teams.length > 0;
@@ -93,7 +96,37 @@ export default async function NewsPage() {
         alle Daten kommen live von der öffentlichen ESPN-API.
       </p>
 
-      <div className="grid lg:grid-cols-2 gap-6 mt-12">
+      {/* Live-Drive-Tracker: echte Spielsituation, Spiel frei waehlbar */}
+      <section className="mt-12">
+        <div className="flex items-end justify-between gap-4 flex-wrap mb-4">
+          <div>
+            <span className="chip-accent chip">Live</span>
+            <h2 className="font-display text-3xl font-bold mt-2">
+              Drive-<span className="grad-text italic">Tracker.</span>
+            </h2>
+            <p className="text-mute mt-1 text-sm max-w-2xl">
+              Ballbesitz, Down &amp; Distance, Feldposition und Siegwahrscheinlichkeit — Spiel
+              auswählen, der Rest aktualisiert sich während der Partie von selbst.
+            </p>
+          </div>
+        </div>
+        <LiveDriveTracker initialGames={situations} />
+      </section>
+
+      {/* News pro Team */}
+      <section className="mt-16">
+        <TeamNewsFeed
+          teams={teams.map((t) => ({
+            id: t.id,
+            name: t.name,
+            shortName: t.shortName,
+            color: t.color,
+            logo: t.logo,
+          }))}
+        />
+      </section>
+
+      <div className="grid lg:grid-cols-2 gap-6 mt-4">
         <section>
           <h2 className="font-display text-xl font-bold mb-3">01 · Stadium Scoreboard</h2>
           <StadiumScoreboard
@@ -132,28 +165,12 @@ export default async function NewsPage() {
         </section>
 
         <section>
-          <h2 className="font-display text-xl font-bold mb-3">04 · Drive-Tracker</h2>
-          <DriveTracker
-            offenseCode={scoreHome.code}
-            defenseCode={scoreAway.code}
-            yardLine={28}
-            down={3}
-            distance={7}
-            driveStart={28}
-            driveEnd={68}
-            winProbability={71}
-            totalEpa={8.4}
-            plays={9}
-          />
-        </section>
-
-        <section>
-          <h2 className="font-display text-xl font-bold mb-3">05 · Power Rankings</h2>
+          <h2 className="font-display text-xl font-bold mb-3">04 · Power Rankings</h2>
           <PowerRankings teams={ranked} />
         </section>
 
         <section>
-          <h2 className="font-display text-xl font-bold mb-3">06 · Highlight-Banner</h2>
+          <h2 className="font-display text-xl font-bold mb-3">05 · Highlight-Banner</h2>
           <HighlightBanner
             label={highlight.category.toUpperCase()}
             title={highlight.title}
