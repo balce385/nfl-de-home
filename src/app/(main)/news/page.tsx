@@ -10,9 +10,9 @@ import {
   getAllTeams,
   getScoreboard,
   getStandings,
-  getPassingLeader,
   getGameSituations,
 } from '@/lib/nfl-live';
+import { getTopPasser } from '@/lib/advanced-stats';
 import { fullArticles } from '@/data/articles';
 
 export const metadata = {
@@ -29,7 +29,7 @@ export default async function NewsPage() {
     getAllTeams(),
     getScoreboard(),
     getStandings(),
-    getPassingLeader(),
+    getTopPasser(),
     getGameSituations(),
   ]);
 
@@ -48,31 +48,41 @@ export default async function NewsPage() {
     ? { code: game.away.code, name: game.away.name, score: game.away.score, color: game.away.color }
     : { code: 'DET', name: 'Lions', score: 0, color: '#0076B6' };
 
-  // 2. Trading Card — aktueller Passing-Leader der Liga
+  // 2. Trading Card — Passing-Leader aus den eigenen Next-Gen-Stats.
+  // ESPNs /leaders-Endpunkt antwortet seit September 2026 mit 404.
   const tcStats = passLeader
     ? [
-        { label: passLeader.category, value: passLeader.displayValue || '—' },
-        { label: 'POS', value: passLeader.position },
-        { label: 'TEAM', value: passLeader.team },
+        { label: `Pass YDS ${passLeader.season}`, value: passLeader.passYards.toLocaleString('de-DE') },
+        { label: 'TD / INT', value: `${passLeader.touchdowns} / ${passLeader.interceptions}` },
+        {
+          label: 'Rating',
+          value: passLeader.passerRating
+            ? passLeader.passerRating.toLocaleString('de-DE', { maximumFractionDigits: 1 })
+            : '—',
+        },
       ]
     : [
         { label: 'Pass YDS', value: '—' },
-        { label: 'POS', value: 'QB' },
-        { label: 'TEAM', value: '—' },
+        { label: 'TD / INT', value: '—' },
+        { label: 'Rating', value: '—' },
       ];
 
-  // 3./6. Magazin-Cover & Highlight aus der Redaktions-Datenbank
+  // 3./5. Magazin-Cover & Highlight aus der Artikel-Datenbank
   const magazinArticle = fullArticles.find((a) => a.category === 'Analyse') ?? fullArticles[0];
   const highlight = fullArticles[0];
+  const magazinDate = new Date(magazinArticle.publishedAt);
+  // Ausgabe = laufende Nummer des Artikels, damit die Zahl einen Bezug hat
+  // (vorher stand hier fest verdrahtet "Ausgabe 47").
+  const magazinIssue = fullArticles.length - fullArticles.indexOf(magazinArticle);
 
-  // 5. Power Rankings — Top 5 nach Win-Percentage (Live-Standings)
+  // 4. Power Rankings — Top 5 der Live-Standings mit echter Punktedifferenz
   const colorByCode = new Map(teams.map((t) => [t.id, t.color]));
   const ranked = standings.slice(0, 5).map((s, i) => ({
     rank: i + 1,
     code: s.code,
     name: s.record ? `${s.name} (${s.record})` : s.name,
     color: colorByCode.get(s.code) ?? '#666',
-    movement: 0,
+    differential: s.differential,
   }));
 
   return (
@@ -142,8 +152,8 @@ export default async function NewsPage() {
         <section>
           <h2 className="font-display text-xl font-bold mb-3">02 · Trading Card</h2>
           <TradingCard
-            name={passLeader?.name ?? 'Saison startet bald'}
-            position={passLeader?.position ?? 'QB'}
+            name={passLeader?.name ?? 'Noch keine Daten'}
+            position="QB"
             jersey={0}
             team={passLeader?.team ?? 'NFL'}
             photoUrl={passLeader?.headshot ?? null}
@@ -154,12 +164,15 @@ export default async function NewsPage() {
         <section>
           <h2 className="font-display text-xl font-bold mb-3">03 · Magazin-Cover</h2>
           <MagazineCover
-            issue={47}
-            week={new Date(magazinArticle.publishedAt).getMonth() + 1}
+            issue={magazinIssue}
+            date={magazinDate.toLocaleDateString('de-DE', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
             title={magazinArticle.title}
             subtitle={magazinArticle.excerpt}
             readMinutes={magazinArticle.readingMinutes}
-            author="Redaktion"
             href={`/magazin/${magazinArticle.slug}`}
           />
         </section>
@@ -175,7 +188,7 @@ export default async function NewsPage() {
             label={highlight.category.toUpperCase()}
             title={highlight.title}
             description={highlight.excerpt}
-            metric="NEU"
+            metric={`${highlight.readingMinutes} min`}
             matchup={highlight.accentTeam}
             href={`/magazin/${highlight.slug}`}
           />

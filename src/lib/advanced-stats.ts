@@ -65,6 +65,63 @@ const num = (v: unknown): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
+export type TopPasser = {
+  name: string;
+  team: string | null;
+  headshot: string | null;
+  season: number;
+  passYards: number;
+  touchdowns: number;
+  interceptions: number;
+  passerRating: number | null;
+};
+
+/**
+ * Passing-Leader der zuletzt erfassten Saison.
+ *
+ * Ersetzt ESPNs `/leaders`-Endpunkt, der seit September 2026 nur noch
+ * `{"code":404}` liefert. Die Zahlen kommen aus den Next Gen Stats in
+ * `player_advanced`, das Passer Rating rechnen wir selbst.
+ */
+export async function getTopPasser(): Promise<TopPasser | null> {
+  const supabase = createClient();
+
+  const { data } = await supabase
+    .from('player_advanced')
+    .select(
+      'season, team_id, attempts, completions, pass_yards, pass_touchdowns, interceptions, ' +
+        'players(full_name, headshot_url)'
+    )
+    .eq('week', 0)
+    .eq('position', 'QB')
+    .order('season', { ascending: false })
+    .order('pass_yards', { ascending: false })
+    .limit(1);
+
+  const row = (data as unknown as Record<string, any>[] | null)?.[0];
+  if (!row) return null;
+
+  const attempts = num(row.attempts);
+  const completions = num(row.completions);
+  const passYards = num(row.pass_yards) ?? 0;
+  const tds = num(row.pass_touchdowns) ?? 0;
+  const ints = num(row.interceptions) ?? 0;
+
+  return {
+    name: row.players?.full_name ?? 'Unbekannt',
+    team: row.team_id ?? null,
+    headshot: row.players?.headshot_url ?? null,
+    season: Number(row.season),
+    passYards,
+    touchdowns: tds,
+    interceptions: ints,
+    passerRating:
+      attempts && completions !== null
+        ? passerRating(completions, attempts, passYards, tds, ints)
+        : null,
+  };
+}
+
 export async function getAdvancedStats(group: PositionGroup): Promise<{
   rows: AdvancedRow[];
   season: number | null;

@@ -3,7 +3,12 @@ export type RankedTeam = {
   code: string;
   name: string;
   color: string; // hex
-  movement: number; // positive = up, negative = down, 0 = same
+  /**
+   * Punktedifferenz aus den Live-Standings. Vorher stand hier ein
+   * Auf-/Absteiger-Pfeil, der immer 0 war und deshalb bei jedem Team nur
+   * einen Strich zeigte — wir speichern keine Rangliste der Vorwoche.
+   */
+  differential: number;
 };
 
 export function PowerRankings({ teams }: { teams: RankedTeam[] }) {
@@ -11,9 +16,9 @@ export function PowerRankings({ teams }: { teams: RankedTeam[] }) {
     <div className="card p-4 text-sm">
       {teams.map((t, i) => {
         const isLast = i === teams.length - 1;
-        const movementColor =
-          t.movement > 0 ? 'text-accent' : t.movement < 0 ? 'text-danger' : 'text-mute';
-        const movementIcon = t.movement > 0 ? '▲' : t.movement < 0 ? '▼' : '—';
+        const diffColor =
+          t.differential > 0 ? 'text-accent' : t.differential < 0 ? 'text-danger' : 'text-mute';
+        const sign = t.differential > 0 ? '+' : '';
         return (
           <div
             key={t.code}
@@ -29,8 +34,12 @@ export function PowerRankings({ teams }: { teams: RankedTeam[] }) {
               {t.code}
             </div>
             <span className="flex-1">{t.name}</span>
-            <span className={`font-mono text-xs ${movementColor}`}>
-              {movementIcon} {Math.abs(t.movement) || ''}
+            <span
+              className={`font-mono text-xs tabular-nums ${diffColor}`}
+              title="Punktedifferenz"
+            >
+              {sign}
+              {t.differential}
             </span>
           </div>
         );

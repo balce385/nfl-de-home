@@ -120,6 +120,10 @@ export type StandingRow = {
   ties: number;
   winPercent: number;
   record: string;
+  pointsFor: number;
+  pointsAgainst: number;
+  /** Punktedifferenz — sagt am Saisonanfang mehr aus als die Bilanz. */
+  differential: number;
 };
 
 export async function getStandings(): Promise<StandingRow[]> {
@@ -130,6 +134,8 @@ export async function getStandings(): Promise<StandingRow[]> {
     for (const entry of conference.standings?.entries ?? []) {
       const stats: Record<string, any> = {};
       for (const s of entry.stats ?? []) stats[s.name] = s;
+      const pointsFor = Number(stats.pointsFor?.value ?? 0);
+      const pointsAgainst = Number(stats.pointsAgainst?.value ?? 0);
       rows.push({
         code: normalizeAbbr(entry.team?.abbreviation ?? '???'),
         name: entry.team?.displayName ?? '',
@@ -139,10 +145,15 @@ export async function getStandings(): Promise<StandingRow[]> {
         ties: Number(stats.ties?.value ?? 0),
         winPercent: Number(stats.winPercent?.value ?? 0),
         record: stats.overall?.displayValue ?? '',
+        pointsFor,
+        pointsAgainst,
+        differential: Number(stats.differential?.value ?? pointsFor - pointsAgainst),
       });
     }
   }
-  return rows.sort((a, b) => b.winPercent - a.winPercent);
+  // Bei gleicher Bilanz entscheidet die Punktedifferenz — am ersten Spieltag
+  // stehen sonst 30 Teams mit 0-0 in zufaelliger Reihenfolge.
+  return rows.sort((a, b) => b.winPercent - a.winPercent || b.differential - a.differential);
 }
 
 /* ----------------------------------- News --------------------------------- */
@@ -540,34 +551,5 @@ export async function getTeamOverview(teamAbbr: string): Promise<TeamOverview | 
     next: upcoming[0] ?? null,
     last: played[played.length - 1] ?? null,
     upcoming: upcoming.slice(0, 5),
-  };
-}
-
-/* ---------------------------------- Leaders ------------------------------- */
-
-export type StatLeader = {
-  name: string;
-  position: string;
-  team: string;
-  headshot: string | null;
-  displayValue: string;
-  category: string;
-};
-
-export async function getPassingLeader(): Promise<StatLeader | null> {
-  const data = await getJSON(`${SITE}/leaders`, 60 * 30);
-  const categories = data?.leaders?.categories ?? [];
-  const passing =
-    categories.find((c: any) => c.name === 'passingYards' || c.name === 'passingLeader') ??
-    categories[0];
-  const top = passing?.leaders?.[0];
-  if (!top?.athlete) return null;
-  return {
-    name: top.athlete.displayName ?? top.athlete.fullName ?? '',
-    position: top.athlete.position?.abbreviation ?? 'QB',
-    team: normalizeAbbr(top.athlete.team?.abbreviation ?? top.team?.abbreviation ?? ''),
-    headshot: top.athlete.headshot?.href ?? null,
-    displayValue: top.displayValue ?? '',
-    category: passing?.displayName ?? 'Passing',
   };
 }
