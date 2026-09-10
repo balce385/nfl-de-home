@@ -1,23 +1,31 @@
 import Link from 'next/link';
 import { Logo } from './Logo';
 
+/**
+ * Nur Links auf Seiten, die es wirklich gibt.
+ *
+ * Entfernt wurden „Redaktion", „Partner", „Karriere", „AGB" und
+ * „Cookie-Einstellungen": Dahinter steckt bei einem privaten Fan-Projekt
+ * nichts — ein Karriere-Link ohne Firma ist Fassade, und ein
+ * Cookie-Banner ohne einwilligungspflichtige Cookies ist reine Deko.
+ * Wer hinter dem Projekt steht und wer die Texte schreibt, steht unter /about.
+ */
 const sections = [
   {
     title: 'Produkt',
     links: [
-      { href: '/dashboard', label: 'Dashboard' },
+      { href: '/news', label: 'Live & News' },
+      { href: '/stats', label: 'Advanced Stats' },
+      { href: '/playbook', label: 'Playbook' },
       { href: '/magazin', label: 'Magazin' },
       { href: '/community', label: 'Community' },
-      { href: '/api-docs', label: 'API' },
     ],
   },
   {
-    title: 'Unternehmen',
+    title: 'Projekt',
     links: [
-      { href: '/about', label: 'Über uns' },
-      { href: '/redaktion', label: 'Redaktion' },
-      { href: '/partner', label: 'Partner' },
-      { href: '/karriere', label: 'Karriere' },
+      { href: '/about', label: 'Über dieses Projekt' },
+      { href: '/api-docs', label: 'API' },
       { href: '/kontakt', label: 'Kontakt' },
     ],
   },
@@ -26,8 +34,6 @@ const sections = [
     links: [
       { href: '/impressum', label: 'Impressum' },
       { href: '/datenschutz', label: 'Datenschutz' },
-      { href: '/agb', label: 'AGB' },
-      { href: '/cookies', label: 'Cookie-Einstellungen' },
     ],
   },
 ];
@@ -38,24 +44,15 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-6 py-16 grid md:grid-cols-5 gap-10">
         <div className="md:col-span-2">
           <Logo />
-          <p className="text-sm text-mute mt-4 max-w-sm">
-            Die zentrale Anlaufstelle für NFL-Fans im deutschsprachigen Raum. Made in Germany,
-            gehostet in der EU.
+          <p className="text-sm text-mute mt-4 max-w-sm leading-relaxed">
+            Live-Daten, Advanced Stats und ein Playbook für NFL-Fans im deutschsprachigen Raum.
+            Ein privates Projekt, kostenlos und werbefrei, gehostet in Nürnberg.
           </p>
-
-          <form className="mt-6 flex gap-2 max-w-sm">
-            <input
-              type="email"
-              placeholder="deine@mail.de"
-              className="flex-1 bg-black/40 border border-line rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-primary text-ink placeholder:text-mute"
-            />
-            <button
-              type="button"
-              className="btn-primary px-4 py-2.5 rounded-lg text-sm font-semibold text-white"
-            >
-              Newsletter
-            </button>
-          </form>
+          <p className="text-sm text-mute mt-4">
+            <Link href="/kontakt" className="text-primary hover:underline">
+              Fehler gefunden? Schreib mir.
+            </Link>
+          </p>
         </div>
 
         {sections.map((section) => (
@@ -78,10 +75,8 @@ export function Footer() {
 
       <div className="border-t border-line">
         <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-mute font-mono">
-          <span>© 2026 NFL-DE-Fan Hub · Nicht offiziell mit der NFL verbunden.</span>
-          <span className="flex items-center gap-2">
-            <span className="live-dot" /> Status: alle Systeme online
-          </span>
+          <span>© {new Date().getFullYear()} NFL-DE-Hub · Nicht offiziell mit der NFL verbunden.</span>
+          <span>Daten: ESPN · nflverse · TheSportsDB</span>
         </div>
       </div>
     </footer>
