@@ -1,18 +1,8 @@
-import { StadiumScoreboard } from '@/components/showcase/StadiumScoreboard';
-import { TradingCard } from '@/components/showcase/TradingCard';
-import { MagazineCover } from '@/components/showcase/MagazineCover';
 import { LiveDriveTracker } from '@/components/showcase/LiveDriveTracker';
-import { PowerRankings } from '@/components/showcase/PowerRankings';
-import { HighlightBanner } from '@/components/showcase/HighlightBanner';
+import { TeamShowcase } from '@/components/showcase/TeamShowcase';
 import { TeamMediaExplorer } from '@/components/showcase/TeamMediaExplorer';
 import { TeamNewsFeed } from '@/components/magazin/TeamNewsFeed';
-import {
-  getAllTeams,
-  getScoreboard,
-  getStandings,
-  getGameSituations,
-} from '@/lib/nfl-live';
-import { getTopPasser } from '@/lib/advanced-stats';
+import { getAllTeams, getScoreboard, getStandings, getGameSituations } from '@/lib/nfl-live';
 import { fullArticles } from '@/data/articles';
 
 export const metadata = {
@@ -25,65 +15,16 @@ export const dynamic = 'force-dynamic';
 
 export default async function NewsPage() {
   // Live-Daten parallel von der ESPN-API laden (Server-Side, gecacht)
-  const [teams, games, standings, passLeader, situations] = await Promise.all([
+  const [teams, games, standings, situations] = await Promise.all([
     getAllTeams(),
     getScoreboard(),
     getStandings(),
-    getTopPasser(),
     getGameSituations(),
   ]);
 
   const isLive = teams.length > 0;
-
-  // 1. Scoreboard — bevorzugt ein laufendes Spiel, sonst das nächste/letzte
-  const game =
-    games.find((g) => g.state === 'in') ??
-    games.find((g) => g.state === 'post') ??
-    games[0] ??
-    null;
-  const scoreHome = game
-    ? { code: game.home.code, name: game.home.name, score: game.home.score, color: game.home.color }
-    : { code: 'KC', name: 'Chiefs', score: 0, color: '#E31837' };
-  const scoreAway = game
-    ? { code: game.away.code, name: game.away.name, score: game.away.score, color: game.away.color }
-    : { code: 'DET', name: 'Lions', score: 0, color: '#0076B6' };
-
-  // 2. Trading Card — Passing-Leader aus den eigenen Next-Gen-Stats.
-  // ESPNs /leaders-Endpunkt antwortet seit September 2026 mit 404.
-  const tcStats = passLeader
-    ? [
-        { label: `Pass YDS ${passLeader.season}`, value: passLeader.passYards.toLocaleString('de-DE') },
-        { label: 'TD / INT', value: `${passLeader.touchdowns} / ${passLeader.interceptions}` },
-        {
-          label: 'Rating',
-          value: passLeader.passerRating
-            ? passLeader.passerRating.toLocaleString('de-DE', { maximumFractionDigits: 1 })
-            : '—',
-        },
-      ]
-    : [
-        { label: 'Pass YDS', value: '—' },
-        { label: 'TD / INT', value: '—' },
-        { label: 'Rating', value: '—' },
-      ];
-
-  // 3./5. Magazin-Cover & Highlight aus der Artikel-Datenbank
-  const magazinArticle = fullArticles.find((a) => a.category === 'Analyse') ?? fullArticles[0];
-  const highlight = fullArticles[0];
-  const magazinDate = new Date(magazinArticle.publishedAt);
-  // Ausgabe = laufende Nummer des Artikels, damit die Zahl einen Bezug hat
-  // (vorher stand hier fest verdrahtet "Ausgabe 47").
-  const magazinIssue = fullArticles.length - fullArticles.indexOf(magazinArticle);
-
-  // 4. Power Rankings — Top 5 der Live-Standings mit echter Punktedifferenz
-  const colorByCode = new Map(teams.map((t) => [t.id, t.color]));
-  const ranked = standings.slice(0, 5).map((s, i) => ({
-    rank: i + 1,
-    code: s.code,
-    name: s.record ? `${s.name} (${s.record})` : s.name,
-    color: colorByCode.get(s.code) ?? '#666',
-    differential: s.differential,
-  }));
+  const week = games.find((g) => g.week)?.week ?? null;
+  const season = games.find((g) => g.season)?.season ?? null;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-16">
@@ -92,9 +33,10 @@ export default async function NewsPage() {
         <span className={`chip ${isLive ? 'chip-accent' : 'chip-warn'}`}>
           {isLive ? 'LIVE-Daten · ESPN-API' : 'ESPN-API nicht erreichbar'}
         </span>
-        {game && (
+        {season && (
           <span className="chip">
-            Saison {game.season} · Week {game.week}
+            Saison {season}
+            {week ? ` · Week ${week}` : ''}
           </span>
         )}
       </div>
@@ -136,64 +78,35 @@ export default async function NewsPage() {
         />
       </section>
 
-      <div className="grid lg:grid-cols-2 gap-6 mt-4">
-        <section>
-          <h2 className="font-display text-xl font-bold mb-3">01 · Stadium Scoreboard</h2>
-          <StadiumScoreboard
-            home={scoreHome}
-            away={scoreAway}
-            quarter={0}
-            clock={game?.statusText ?? ''}
-            venue={game?.venue || 'NFL Stadium'}
-            isLive={game?.state === 'in'}
-          />
-        </section>
-
-        <section>
-          <h2 className="font-display text-xl font-bold mb-3">02 · Trading Card</h2>
-          <TradingCard
-            name={passLeader?.name ?? 'Noch keine Daten'}
-            position="QB"
-            jersey={0}
-            team={passLeader?.team ?? 'NFL'}
-            photoUrl={passLeader?.headshot ?? null}
-            stats={tcStats}
-          />
-        </section>
-
-        <section>
-          <h2 className="font-display text-xl font-bold mb-3">03 · Magazin-Cover</h2>
-          <MagazineCover
-            issue={magazinIssue}
-            date={magazinDate.toLocaleDateString('de-DE', {
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-            })}
-            title={magazinArticle.title}
-            subtitle={magazinArticle.excerpt}
-            readMinutes={magazinArticle.readingMinutes}
-            href={`/magazin/${magazinArticle.slug}`}
-          />
-        </section>
-
-        <section>
-          <h2 className="font-display text-xl font-bold mb-3">04 · Power Rankings</h2>
-          <PowerRankings teams={ranked} />
-        </section>
-
-        <section>
-          <h2 className="font-display text-xl font-bold mb-3">05 · Highlight-Banner</h2>
-          <HighlightBanner
-            label={highlight.category.toUpperCase()}
-            title={highlight.title}
-            description={highlight.excerpt}
-            metric={`${highlight.readingMinutes} min`}
-            matchup={highlight.accentTeam}
-            href={`/magazin/${highlight.slug}`}
-          />
-        </section>
-      </div>
+      {/* Kacheln, die dem gewählten Team folgen */}
+      <section className="mt-16">
+        <TeamShowcase
+          teams={teams.map((t) => ({
+            id: t.id,
+            name: t.name,
+            shortName: t.shortName,
+            color: t.color,
+            logo: t.logo,
+          }))}
+          standings={standings.map((s) => ({
+            code: s.code,
+            name: s.name,
+            conference: s.conference,
+            record: s.record,
+            differential: s.differential,
+          }))}
+          situations={situations}
+          articles={fullArticles.map((a) => ({
+            slug: a.slug,
+            title: a.title,
+            excerpt: a.excerpt,
+            category: a.category,
+            accentTeam: a.accentTeam,
+            publishedAt: a.publishedAt,
+            readingMinutes: a.readingMinutes,
+          }))}
+        />
+      </section>
 
       <div className="mt-16">
         <span className="chip-accent chip">Team-Media</span>
@@ -219,33 +132,20 @@ export default async function NewsPage() {
         </div>
       </div>
 
-      <div className="mt-16 card p-6">
-        <h2 className="font-display text-2xl font-bold">Datenstatus</h2>
-        <ul className="mt-4 space-y-2 text-sm text-mute">
-          <li>
-            Teams (ESPN): <strong className="text-ink">{teams.length}</strong>{' '}
-            {teams.length >= 32 ? '✓' : '— API prüfen'}
-          </li>
-          <li>
-            Spiele im Scoreboard: <strong className="text-ink">{games.length}</strong>{' '}
-            {game ? `(${game.away.code} @ ${game.home.code}, ${game.statusText})` : ''}
-          </li>
-          <li>
-            Standings: <strong className="text-ink">{standings.length} Teams</strong>
-          </li>
-          <li>
-            Passing-Leader:{' '}
-            <strong className="text-ink">{passLeader ? `✓ ${passLeader.name}` : '— (Offseason)'}</strong>
-          </li>
-          <li>
-            Redaktions-Artikel: <strong className="text-ink">{fullArticles.length}</strong>
-          </li>
-        </ul>
-        <p className="text-xs text-mute mt-4">
-          Quellen: ESPN Scoreboard/Standings/Teams/News-API (60s–24h Cache) ·
-          Beat Writers: fiddlespicks.substack.com · Artikel: Redaktion.
-        </p>
-      </div>
+      {/* Quellenangabe statt des frueheren Entwickler-Panels "Datenstatus" */}
+      <p className="text-xs text-mute mt-16">
+        Spielstände, Standings und News von der öffentlichen ESPN-API · Beat Writers:
+        fiddlespicks.substack.com · Statistiken über{' '}
+        <a
+          href="https://github.com/nflverse/nflverse-data"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline"
+        >
+          nflverse
+        </a>
+        .
+      </p>
     </div>
   );
 }
