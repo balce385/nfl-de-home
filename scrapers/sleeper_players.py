@@ -50,7 +50,10 @@ def run():
     for sleeper_id, p in data.items():
         if not isinstance(p, dict):
             continue
-        gsis = p.get("gsis_id")
+        # Sleeper liefert manche GSIS-IDs mit fuehrendem Leerzeichen
+        # (" 00-0035609"); nflverse nicht. Ungetrimmt findet kein Stat-Join den
+        # Spieler, und die Datenbank lehnt solche IDs inzwischen ab.
+        gsis = (p.get("gsis_id") or "").strip()
         if not gsis:
             skipped_no_gsis += 1
             continue

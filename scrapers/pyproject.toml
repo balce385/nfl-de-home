@@ -11,6 +11,8 @@ dependencies = [
     "tenacity>=9.0.0",
     "feedparser>=6.0.11",
     "deep-translator>=1.11.4",
+    # Vertraege gibt es bei nflverse nur noch als Parquet.
+    "pyarrow>=17.0.0",
 ]
 
 # Dieses Projekt liefert kein eigenes Paket aus, es buendelt nur die

@@ -17,6 +17,7 @@ import { TradingCard } from './TradingCard';
 import { MagazineCover } from './MagazineCover';
 import { PowerRankings } from './PowerRankings';
 import { HighlightBanner } from './HighlightBanner';
+import { DepthChartCard } from './DepthChartCard';
 import { useTeamSelection } from '@/components/TeamSelectionContext';
 import type { Situation } from './LiveDriveTracker';
 
@@ -311,6 +312,11 @@ export function TeamShowcase({
           ) : (
             <div className="card p-5 text-sm text-mute">Lade Steckbrief …</div>
           )}
+        </section>
+
+        <section className="lg:col-span-2">
+          <h3 className="font-display text-lg font-bold mb-3">Depth Chart</h3>
+          <DepthChartCard team={selected} />
         </section>
 
         <section className="lg:col-span-2">

@@ -81,12 +81,13 @@ export function TeamNewsFeed({ teams }: { teams: TeamOption[] }) {
     <section className="mb-16">
       <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
         <div>
-          <span className="chip chip-accent">Live · ESPN</span>
+          <span className="chip chip-accent">Live · ESPN (englisch)</span>
           <h2 className="font-display text-3xl font-bold mt-3">
             News zu <span className="grad-text italic">{activeTeam?.shortName ?? 'allen Teams'}</span>
           </h2>
           <p className="text-mute mt-2 text-sm">
-            Wähle dein Team — die Auswahl gilt auch auf der Startseite.
+            Originalmeldungen von ESPN, nicht übersetzt. Wähle dein Team — die Auswahl gilt auch
+            auf der Startseite.
           </p>
         </div>
       </div>
@@ -164,12 +165,18 @@ export function TeamNewsFeed({ teams }: { teams: TeamOption[] }) {
                 <div className="w-full h-40 bg-gradient-to-br from-primary/20 via-bg to-bg" />
               )}
               <div className="p-5 flex flex-col flex-1">
-                <h3 className="font-display text-lg font-bold leading-snug">{n.headline}</h3>
-                {n.description && <p className="text-sm text-mute mt-2 line-clamp-3 flex-1">{n.description}</p>}
+                <h3 lang="en" className="font-display text-lg font-bold leading-snug">
+                  {n.headline}
+                </h3>
+                {n.description && (
+                  <p lang="en" className="text-sm text-mute mt-2 line-clamp-3 flex-1">
+                    {n.description}
+                  </p>
+                )}
                 <div className="flex items-center justify-between mt-4 text-[11px] font-mono text-mute">
                   <span>{relativeTime(n.published)}</span>
                   <span className="flex items-center gap-1 text-primary">
-                    ESPN <ExternalLink size={11} />
+                    ESPN (englisch) <ExternalLink size={11} />
                   </span>
                 </div>
               </div>

@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { ExternalLink, Search, Users } from 'lucide-react';
+import type { PlayerExtras } from '@/lib/player-extras';
 
 export type ExplorerTeam = {
   id: string;
@@ -31,7 +32,12 @@ type AthleteSummary = {
   stats: { label: string; value: string; rank: number | null }[];
 };
 
-type AthleteProfile = { bio: AthleteBio; summary: AthleteSummary | null; categories: CareerCategory[] };
+type AthleteProfile = {
+  bio: AthleteBio;
+  summary: AthleteSummary | null;
+  categories: CareerCategory[];
+  extras?: PlayerExtras;
+};
 
 type CareerSeason = { season: number; teamSlug: string | null; values: string[] };
 type CareerCategory = { name: string; labels: string[]; seasons: CareerSeason[] };
@@ -266,6 +272,9 @@ export function PlayerExplorer({ teams }: { teams: ExplorerTeam[] }) {
                 </div>
               )}
 
+              {profile?.extras?.contract && <Contract c={profile.extras.contract} />}
+              {profile?.extras?.honors && <Honors h={profile.extras.honors} />}
+
               {profile?.summary && (
                 <div className="mt-5">
                   <div className="text-[10px] font-mono uppercase tracking-wider text-mute mb-2">
@@ -288,6 +297,7 @@ export function PlayerExplorer({ teams }: { teams: ExplorerTeam[] }) {
               )}
 
               <Career categories={profile ? profile.categories : null} />
+              {profile?.extras?.combine && <Combine c={profile.extras.combine} />}
 
               <a
                 href={`https://www.espn.com/nfl/player/_/id/${selected.id}`}
@@ -307,11 +317,85 @@ export function PlayerExplorer({ teams }: { teams: ExplorerTeam[] }) {
   );
 }
 
-function Bio({ label, value }: { label: string; value: string }) {
+function Bio({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="bg-black/40 rounded-lg p-3 border border-line">
       <div className="text-[10px] font-mono text-mute uppercase">{label}</div>
       <div className="font-display font-bold text-lg mt-1 truncate">{value}</div>
+      {hint && <div className="text-xs text-mute mt-0.5">{hint}</div>}
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <div className="text-[10px] font-mono uppercase tracking-wider text-mute mb-2">{children}</div>;
+}
+
+const decimal = (v: number, digits: number) =>
+  v.toLocaleString('de-DE', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+
+const musd = (v: number | null) =>
+  v === null ? '—' : `${v.toLocaleString('de-DE', { maximumFractionDigits: 1 })} Mio. $`;
+
+/** Laufender Vertrag laut OverTheCap. */
+function Contract({ c }: { c: NonNullable<PlayerExtras['contract']> }) {
+  return (
+    <div className="mt-5">
+      <SectionLabel>Vertrag{c.team ? ` · ${c.team}` : ''} · OverTheCap</SectionLabel>
+      <div className="grid sm:grid-cols-3 gap-3">
+        <Bio
+          label="Gesamtwert"
+          value={musd(c.valueMusd)}
+          hint={c.years && c.yearSigned ? `${c.years} Jahre, unterschrieben ${c.yearSigned}` : undefined}
+        />
+        <Bio
+          label="Pro Jahr"
+          value={musd(c.apyMusd)}
+          hint={c.capPct !== null ? `${decimal(c.capPct * 100, 1)} % des Salary Cap` : undefined}
+        />
+        <Bio label="Garantiert" value={musd(c.guaranteedMusd)} />
+      </div>
+    </div>
+  );
+}
+
+/** Karriere-Auszeichnungen aus dem Draft-Datensatz (Pro Football Reference). */
+function Honors({ h }: { h: NonNullable<PlayerExtras['honors']> }) {
+  return (
+    <div className="mt-5">
+      <SectionLabel>Auszeichnungen{h.hof ? ' · Hall of Fame' : ''}</SectionLabel>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <Bio label="Pro Bowls" value={String(h.probowls)} />
+        <Bio label="All-Pro" value={String(h.allpro)} />
+        <Bio label="Starter-Saisons" value={h.seasonsStarted !== null ? String(h.seasonsStarted) : '—'} />
+      </div>
+    </div>
+  );
+}
+
+const IN_TO_CM = 2.54;
+
+/** Messwerte der NFL Combine; Sprünge von Zoll in Zentimeter umgerechnet. */
+function Combine({ c }: { c: NonNullable<PlayerExtras['combine']> }) {
+  const items: [string, string | null][] = [
+    ['40 Yards', c.forty !== null ? `${decimal(c.forty, 2)} s` : null],
+    ['Bankdrücken', c.bench !== null ? `${c.bench}× 102 kg` : null],
+    ['Vertikalsprung', c.vertical !== null ? `${Math.round(c.vertical * IN_TO_CM)} cm` : null],
+    ['Weitsprung', c.broadJump !== null ? `${Math.round(c.broadJump * IN_TO_CM)} cm` : null],
+    ['3-Cone', c.cone !== null ? `${decimal(c.cone, 2)} s` : null],
+    ['Shuttle', c.shuttle !== null ? `${decimal(c.shuttle, 2)} s` : null],
+  ];
+  const measured = items.filter((item): item is [string, string] => item[1] !== null);
+  if (measured.length === 0) return null;
+
+  return (
+    <div className="mt-5">
+      <SectionLabel>NFL Combine {c.season}</SectionLabel>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {measured.map(([label, value]) => (
+          <Bio key={label} label={label} value={value} />
+        ))}
+      </div>
     </div>
   );
 }

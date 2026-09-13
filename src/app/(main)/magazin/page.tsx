@@ -21,10 +21,11 @@ export default async function MagazinPage() {
       <div className="mb-12">
         <span className="chip-warn chip">Magazin</span>
         <h1 className="font-display text-5xl font-bold mt-4 leading-tight">
-          Aus der <span className="grad-text italic">Redaktion.</span>
+          News &amp; <span className="grad-text italic">Analysen.</span>
         </h1>
         <p className="text-mute mt-3 text-lg max-w-2xl">
-          Wöchentliche Analysen, Game-Recaps und Hintergründe — kuratiert von echten NFL-Fans.
+          Aktuelle Meldungen von ESPN im englischen Original, darunter eigene Analysen und
+          Hintergründe auf Deutsch.
         </p>
       </div>
 

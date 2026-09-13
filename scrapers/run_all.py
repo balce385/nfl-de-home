@@ -10,8 +10,9 @@ FK-Abhaengigkeiten:
   6.  player_stats EPA   (nflverse PBP)
   7.  player_stats snaps (nflverse snap_counts)
   8.  injuries           (nflverse - woechentliche Reports)
-  9.  team_videos        (YouTube RSS pro Team-Channel)
-  10. articles           (NFL.com + ESPN, Auto-Uebersetzung)
+  9.  combine, draft, contracts (nflverse - Spielerkarte, ohne FK)
+  10. team_videos        (YouTube RSS pro Team-Channel)
+  11. articles           (NFL.com + ESPN, Auto-Uebersetzung)
 """
 import sys
 from datetime import datetime
@@ -45,6 +46,9 @@ STEPS = [
     ("nflverse Snap Counts",       nflverse_releases.run_snap_counts,  {"season": YEAR}, False),
     ("nflverse Injuries",          nflverse_releases.run_injuries,     {"season": YEAR}, False),
     ("Next Gen Stats",             nflverse_ngs.run,                   {"season": YEAR}, False),
+    ("nflverse Combine",           nflverse_releases.run_combine,      {}, False),
+    ("nflverse Draft Picks",       nflverse_releases.run_draft_picks,  {}, False),
+    ("OverTheCap Vertraege",       nflverse_releases.run_contracts,    {}, False),
     ("YouTube Team-Feeds",         youtube_team_feeds.run,             {}, False),
     # Pro-Football-Reference sperrt Server-IPs per 403. Die Zahlen kommen sonst
     # aus nflverse, deshalb kein harter Fehler.
