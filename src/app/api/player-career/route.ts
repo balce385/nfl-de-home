@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAthleteCareer } from '@/lib/nfl-live';
+import { getAthleteProfile } from '@/lib/nfl-live';
 
 /**
- * Server-seitiger Proxy für die Karrierewerte eines Spielers.
+ * Server-seitiger Proxy für Steckbrief und Karrierewerte eines Spielers.
  *
  * ESPN sendet keine CORS-Header, der Browser kann die API also nicht direkt
  * abfragen. Die ID ist die ESPN-Athleten-ID aus dem Roster.
@@ -15,9 +15,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'numeric id required' }, { status: 400 });
   }
 
-  const categories = await getAthleteCareer(id);
+  const profile = await getAthleteProfile(id);
   return NextResponse.json(
-    { categories },
+    profile,
     {
       headers: {
         'Cache-Control': 'public, s-maxage=1800, stale-while-revalidate=3600',

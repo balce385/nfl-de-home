@@ -18,6 +18,21 @@ export type ExplorerTeam = {
   logo: string | null;
 };
 
+type AthleteBio = {
+  draft: string | null;
+  birthPlace: string | null;
+  debutYear: number | null;
+  experience: string | null;
+  status: string | null;
+};
+
+type AthleteSummary = {
+  title: string;
+  stats: { label: string; value: string; rank: number | null }[];
+};
+
+type AthleteProfile = { bio: AthleteBio; summary: AthleteSummary | null; categories: CareerCategory[] };
+
 type CareerSeason = { season: number; teamSlug: string | null; values: string[] };
 type CareerCategory = { name: string; labels: string[]; seasons: CareerSeason[] };
 
@@ -58,7 +73,7 @@ export function PlayerExplorer({ teams }: { teams: ExplorerTeam[] }) {
   const [error, setError] = useState(false);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<RosterPlayer | null>(null);
-  const [career, setCareer] = useState<CareerCategory[] | null>(null);
+  const [profile, setProfile] = useState<AthleteProfile | null>(null);
 
   const team = teams.find((t) => t.id === teamId);
 
@@ -102,15 +117,15 @@ export function PlayerExplorer({ teams }: { teams: ExplorerTeam[] }) {
 
   useEffect(() => {
     if (!selected) {
-      setCareer(null);
+      setProfile(null);
       return;
     }
     let cancelled = false;
-    setCareer(null);
+    setProfile(null);
     fetch(`/api/player-career?id=${encodeURIComponent(selected.id)}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('career'))))
-      .then((d) => !cancelled && setCareer(d?.categories ?? []))
-      .catch(() => !cancelled && setCareer([]));
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('profile'))))
+      .then((d) => !cancelled && setProfile(d))
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -240,7 +255,39 @@ export function PlayerExplorer({ teams }: { teams: ExplorerTeam[] }) {
                 </div>
               )}
 
-              <Career categories={career} />
+              {profile?.bio.draft && (
+                <div className="mt-4">
+                  <Bio label="Draft" value={profile.bio.draft} />
+                </div>
+              )}
+              {profile?.bio.birthPlace && (
+                <div className="mt-3">
+                  <Bio label="Geboren in" value={profile.bio.birthPlace} />
+                </div>
+              )}
+
+              {profile?.summary && (
+                <div className="mt-5">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-mute mb-2">
+                    {profile.summary.title}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {profile.summary.stats.slice(0, 4).map((st) => (
+                      <div key={st.label}>
+                        <div className="text-[10px] font-mono uppercase tracking-wider text-mute">
+                          {st.label}
+                        </div>
+                        <div className="font-medium mt-0.5 tabular-nums">{st.value}</div>
+                        {st.rank && (
+                          <div className="text-xs text-mute">Platz {st.rank} der Liga</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Career categories={profile ? profile.categories : null} />
 
               <a
                 href={`https://www.espn.com/nfl/player/_/id/${selected.id}`}

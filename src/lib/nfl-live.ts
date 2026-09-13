@@ -673,6 +673,33 @@ export type CareerSeason = {
   values: string[];
 };
 
+export type AthleteBio = {
+  /** Draft-Position im Klartext, z. B. "2017: Rd 1, Pk 10 (KC)". */
+  draft: string | null;
+  /** Geburtsort, z. B. "Whitehouse, TX". */
+  birthPlace: string | null;
+  /** Erste NFL-Saison. */
+  debutYear: number | null;
+  /** Dienstjahre im Klartext, z. B. "10th Season". */
+  experience: string | null;
+  /** "active", "injured", "suspension" … */
+  status: string | null;
+};
+
+/** Ein Saisonwert samt Platz in der Liga, wie ESPN ihn ausweist. */
+export type AthleteSummaryStat = {
+  label: string;
+  value: string;
+  /** Rang in der Liga; null, wenn ESPN keinen ausweist. */
+  rank: number | null;
+};
+
+export type AthleteSummary = {
+  /** Ueberschrift der Zusammenfassung, z. B. "2025 regular season stats". */
+  title: string;
+  stats: AthleteSummaryStat[];
+};
+
 export type CareerCategory = {
   /** "passing", "rushing", "receiving", "defensive", "scoring" */
   name: string;
@@ -689,6 +716,52 @@ export type CareerCategory = {
  * werden hier schon aussortiert, damit die Oberflaeche nur zeigen muss, was
  * wirklich Werte hat.
  */
+export type AthleteProfile = {
+  bio: AthleteBio;
+  summary: AthleteSummary | null;
+  categories: CareerCategory[];
+};
+
+/**
+ * Steckbrief eines Spielers: Draft, Geburtsort, Dienstjahre und die
+ * Saisonwerte samt Liga-Rang.
+ *
+ * Das Geburtsdatum laesst ESPN als "17/9/1995" aus — ohne Angabe, ob Tag oder
+ * Monat vorn steht. Es bleibt deshalb aussen vor; das Alter steht ohnehin im
+ * Roster.
+ */
+export async function getAthleteBio(
+  athleteId: string,
+): Promise<{ bio: AthleteBio; summary: AthleteSummary | null }> {
+  const data = await getJSON(`${WEB}/athletes/${encodeURIComponent(athleteId)}`, 60 * 60 * 6);
+  const a = data?.athlete ?? {};
+
+  const debut = Number(a.debutYear);
+  const bio: AthleteBio = {
+    draft: a.displayDraft ?? null,
+    birthPlace: a.displayBirthPlace ?? null,
+    debutYear: Number.isFinite(debut) ? debut : null,
+    experience: a.displayExperience ?? null,
+    status: a.status?.type ?? null,
+  };
+
+  const raw = a.statsSummary;
+  const stats: AthleteSummaryStat[] = (raw?.statistics ?? [])
+    .map((st: any): AthleteSummaryStat | null => {
+      const label = st?.shortDisplayName ?? st?.displayName;
+      const value = st?.displayValue;
+      if (!label || value == null) return null;
+      const rank = Number(st?.rank);
+      return { label, value: String(value), rank: Number.isFinite(rank) && rank > 0 ? rank : null };
+    })
+    .filter(Boolean);
+
+  return {
+    bio,
+    summary: raw?.displayName && stats.length > 0 ? { title: raw.displayName, stats } : null,
+  };
+}
+
 export async function getAthleteCareer(athleteId: string): Promise<CareerCategory[]> {
   const data = await getJSON(`${WEB}/athletes/${encodeURIComponent(athleteId)}/stats`, 60 * 60 * 6);
   const cats = data?.categories ?? [];
@@ -710,4 +783,16 @@ export async function getAthleteCareer(athleteId: string): Promise<CareerCategor
       return { name: c?.name ?? '', labels, seasons };
     })
     .filter((c: CareerCategory) => c.name && c.labels.length > 0 && c.seasons.length > 0);
+}
+
+/** Steckbrief und Karriere in einem Aufruf, damit die Oberflaeche nur einmal laedt. */
+export async function getAthleteProfile(athleteId: string): Promise<AthleteProfile> {
+  const [bioPart, categories] = await Promise.all([
+    getAthleteBio(athleteId).catch(() => ({
+      bio: { draft: null, birthPlace: null, debutYear: null, experience: null, status: null },
+      summary: null,
+    })),
+    getAthleteCareer(athleteId).catch(() => []),
+  ]);
+  return { ...bioPart, categories };
 }
