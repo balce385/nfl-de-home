@@ -1,15 +1,20 @@
-from fastapi import FastAPI, Depends, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
+from .auth import get_current_user_id
 from .config import settings
 from .db import get_supabase, get_supabase_admin
-from .auth import get_current_user_id
 from .schemas import (
-    RegisterIn, LoginIn, TokenOut, UserOut,
-    MessageIn, MessageOut, DashboardData,
+    DashboardData,
+    LoginIn,
+    MessageIn,
+    MessageOut,
+    RegisterIn,
+    TokenOut,
+    UserOut,
 )
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
@@ -61,8 +66,10 @@ def login(request: Request, body: LoginIn):
     sb = get_supabase()
     try:
         res = sb.auth.sign_in_with_password({"email": body.email, "password": body.password})
-    except Exception:
-        raise HTTPException(401, "Invalid credentials")
+    # supabase-py wirft je nach Version verschiedene Fehlertypen; enger zu
+    # fangen wuerde aus einem falschen Passwort einen 500er machen.
+    except Exception as err:
+        raise HTTPException(401, "Invalid credentials") from err
     if not res.user or not res.session:
         raise HTTPException(401, "Invalid credentials")
     return TokenOut(
