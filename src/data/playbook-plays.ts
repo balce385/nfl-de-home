@@ -16,12 +16,17 @@ export type PlayPlayer = {
   route: RoutePt[];
 };
 
+/** Coverage-Familie, wie sie am Anfang des UI-Namens steht ("Cover 3 — Zone"). */
+export type CoverKey = 'Cover 0' | 'Cover 1' | 'Cover 2' | 'Cover 3';
+
 export type Concept = {
   key: string;
   name: string;
   type: 'pass' | 'run';
   formation: string; // muss ein Key aus OFF_FORMATIONS sein
   blurb: string;
+  /** Coverages, gegen die das Konzept im Lehrbuch stark ist (Tush Push: keine). */
+  beats: CoverKey[];
   /** Setzt die Routen und gibt die Spieler-ID des primären Reads zurück. */
   apply: (off: PlayPlayer[]) => string;
 };
@@ -32,7 +37,18 @@ export type Concept = {
 const IN = (x: number) => (x >= 0 ? -1 : 1);
 const OUT = (x: number) => (x >= 0 ? 1 : -1);
 
-const r = {
+/**
+ * Jeder Baustein verträgt einen fehlenden Spieler und liefert dann keine Route.
+ * Nicht jede Formation hat jede Rolle (Trips ohne Slot-Receiver) — ohne diese
+ * Absicherung stürzte etwa "Stick" mit `reading 'x'` ab.
+ */
+function orEmpty<T extends Record<string, (p: PlayPlayer) => RoutePt[]>>(builders: T) {
+  return Object.fromEntries(
+    Object.entries(builders).map(([k, fn]) => [k, (p: PlayPlayer | undefined) => (p ? fn(p) : [])])
+  ) as { [K in keyof T]: (p: PlayPlayer | undefined) => RoutePt[] };
+}
+
+const r = orEmpty({
   go: (p: PlayPlayer): RoutePt[] => [{ x: p.x, y: p.y - 22 }],
   seam: (p: PlayPlayer): RoutePt[] => [
     { x: p.x + (Math.abs(p.x) < 6 ? IN(p.x) * 2.5 : 0), y: p.y - 22 },
@@ -112,7 +128,7 @@ const r = {
     { x: p.x - 2, y: p.y - 0.2 },
     { x: -4.5, y: -3 },
   ],
-};
+});
 
 /* ------------------------------- Helfer ----------------------------------- */
 
@@ -141,6 +157,7 @@ const clearRoutes = (off: PlayPlayer[]) =>
 export const CONCEPTS: Concept[] = [
   {
     key: 'four-verts',
+    beats: ['Cover 2', 'Cover 3'],
     name: 'Four Verticals',
     type: 'pass',
     formation: 'Empty (10)',
@@ -158,6 +175,7 @@ export const CONCEPTS: Concept[] = [
   },
   {
     key: 'mesh',
+    beats: ['Cover 0', 'Cover 1'],
     name: 'Mesh',
     type: 'pass',
     formation: 'Gun Trips Right',
@@ -185,6 +203,7 @@ export const CONCEPTS: Concept[] = [
   },
   {
     key: 'ycross',
+    beats: ['Cover 1', 'Cover 3'],
     name: 'Y-Cross (Drive)',
     type: 'pass',
     formation: 'Gun Spread (11)',
@@ -207,6 +226,7 @@ export const CONCEPTS: Concept[] = [
   },
   {
     key: 'smash',
+    beats: ['Cover 2'],
     name: 'Smash',
     type: 'pass',
     formation: 'Gun Spread (11)',
@@ -227,6 +247,7 @@ export const CONCEPTS: Concept[] = [
   },
   {
     key: 'slant-flat',
+    beats: ['Cover 0', 'Cover 3'],
     name: 'Slant–Flat',
     type: 'pass',
     formation: 'Gun Trips Right',
@@ -243,6 +264,7 @@ export const CONCEPTS: Concept[] = [
   },
   {
     key: 'flood',
+    beats: ['Cover 3'],
     name: 'Sail (Flood)',
     type: 'pass',
     formation: 'Gun Trips Right',
@@ -263,6 +285,7 @@ export const CONCEPTS: Concept[] = [
   },
   {
     key: 'dagger',
+    beats: ['Cover 3'],
     name: 'Dagger',
     type: 'pass',
     formation: 'Gun Spread (11)',
@@ -283,6 +306,7 @@ export const CONCEPTS: Concept[] = [
   },
   {
     key: 'stick',
+    beats: ['Cover 3'],
     name: 'Stick',
     type: 'pass',
     formation: 'Gun Trips Right',
@@ -290,11 +314,13 @@ export const CONCEPTS: Concept[] = [
     apply: (off) => {
       clearRoutes(off);
       const { wide, inside, backs } = groups(off);
-      const stickGuy = inside[inside.length - 1] ?? inside[0];
+      // Ohne Slot-Receiver (Trips mit weiten Splits) sitzt der innerste Receiver der Trips-Seite.
+      const stickGuy =
+        inside[inside.length - 1] ?? wide.filter((p) => p.x >= 0).sort((a, b) => a.x - b.x)[0];
       set(stickGuy, r.hitch(stickGuy));
       const outside = wide[wide.length - 1] ?? wide[0];
       set(outside, r.go(outside));
-      wide.filter((p) => p !== outside).forEach((p) => set(p, r.slant(p)));
+      wide.filter((p) => p !== outside && p !== stickGuy).forEach((p) => set(p, r.slant(p)));
       inside.filter((p) => p !== stickGuy).forEach((p) => set(p, r.dig(p)));
       set(backs[0], r.flat(backs[0]));
       return stickGuy?.id ?? '';
@@ -302,6 +328,7 @@ export const CONCEPTS: Concept[] = [
   },
   {
     key: 'pa-boot',
+    beats: ['Cover 1', 'Cover 3'],
     name: 'PA Boot (Waggle)',
     type: 'pass',
     formation: 'I-Formation (21)',
@@ -321,6 +348,7 @@ export const CONCEPTS: Concept[] = [
   },
   {
     key: 'shallow-cross',
+    beats: ['Cover 0', 'Cover 1'],
     name: 'Shallow Cross',
     type: 'pass',
     formation: 'Gun Spread (11)',
@@ -340,6 +368,7 @@ export const CONCEPTS: Concept[] = [
   /* ------------------------------- Läufe -------------------------------- */
   {
     key: 'inside-zone',
+    beats: ['Cover 2'],
     name: 'Inside Zone',
     type: 'run',
     formation: 'I-Formation (21)',
@@ -353,6 +382,7 @@ export const CONCEPTS: Concept[] = [
   },
   {
     key: 'outside-zone',
+    beats: ['Cover 2'],
     name: 'Wide Zone',
     type: 'run',
     formation: 'Gun Spread (11)',
@@ -368,6 +398,7 @@ export const CONCEPTS: Concept[] = [
   },
   {
     key: 'power-o',
+    beats: ['Cover 2'],
     name: 'Power O',
     type: 'run',
     formation: 'I-Formation (21)',
@@ -381,6 +412,7 @@ export const CONCEPTS: Concept[] = [
   },
   {
     key: 'counter',
+    beats: ['Cover 2'],
     name: 'Counter',
     type: 'run',
     formation: 'Gun Spread (11)',
@@ -394,6 +426,7 @@ export const CONCEPTS: Concept[] = [
   },
   {
     key: 'tush-push',
+    beats: [],
     name: 'Tush Push',
     type: 'run',
     formation: 'I-Formation (21)',
@@ -440,4 +473,16 @@ const TEAM_PLAYS: Record<string, string[]> = {
 export function getTeamPlays(team: string): Concept[] {
   const keys = TEAM_PLAYS[team] ?? DEFAULT_PLAYS;
   return keys.map((k) => CONCEPT_MAP[k]).filter(Boolean);
+}
+
+/* ---------------------------- Konzept vs. Coverage ------------------------ */
+
+/** `coverage` ist der UI-Name, z. B. "Cover 3 — Zone". */
+export function strongAgainst(concept: Concept, coverage: string): boolean {
+  return concept.beats.some((b) => coverage.startsWith(b));
+}
+
+/** Lehrbuch-Antworten auf eine Coverage, optional nur Pass- oder Laufspielzuege. */
+export function countersFor(coverage: string, type?: Concept['type']): Concept[] {
+  return CONCEPTS.filter((c) => strongAgainst(c, coverage) && (!type || c.type === type));
 }

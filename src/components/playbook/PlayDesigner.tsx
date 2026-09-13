@@ -11,8 +11,15 @@
  *  - 3D-Ball-Flugbahn mit Schatten, Bewegungs-Trails, Replay, PNG-Export
  *  - Respektiert prefers-reduced-motion
  */
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { getTeamPlays, CONCEPT_MAP, type Concept } from '@/data/playbook-plays';
+import { useEffect, useRef, useState, useCallback, memo } from 'react';
+import {
+  getTeamPlays,
+  CONCEPTS,
+  CONCEPT_MAP,
+  countersFor,
+  strongAgainst,
+  type Concept,
+} from '@/data/playbook-plays';
 import {
   CAM_PRESETS,
   type CamKey,
@@ -77,7 +84,7 @@ function olne(): Player[] {
   ];
 }
 
-const OFF_FORMATIONS: Record<string, () => Player[]> = {
+export const OFF_FORMATIONS: Record<string, () => Player[]> = {
   'Gun Spread (11)': () => [
     { id: oid(0), side: 'O', pos: 'QB', x: 0, y: 5, route: [] },
     { id: oid(1), side: 'O', pos: 'RB', x: -2.8, y: 5, route: [] },
@@ -232,9 +239,8 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
   const [simState, setSimState] = useState<'edit' | 'running' | 'done'>('edit');
   const [result, setResult] = useState<string>('');
   const [activePlay, setActivePlay] = useState<string>('');
-  const [camKey, setCamKey] = useState<CamKey>('broadcast');
-  const [zoom, setZoom] = useState(1);
-  const [playFilter, setPlayFilter] = useState('');
+  // Von oben lesen sich Formation und Routen am klarsten; TV-Perspektive bleibt wählbar.
+  const [camKey, setCamKey] = useState<CamKey>('all22');
 
   // Refs für die persistente Animationsschleife (vermeiden stale closures)
   const targetRef = useRef(target);
@@ -291,7 +297,11 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
     reducedRef.current =
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    loadFormation(formation, coverage);
+    // Mit dem ersten Signature-Play starten statt mit leerem Feld: so sieht man
+    // sofort Routen und kann direkt abspielen.
+    const first = getTeamPlays(offTeam)[0];
+    if (first) loadPlay(first);
+    else loadFormation(formation, coverage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -677,6 +687,7 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
         const by = sim && b.sy !== undefined ? b.sy! : b.y;
         return by - ay; // höhere y (näher) zuletzt
       });
+      let targetMark: { X: number; top: number } | null = null;
       for (const p of order) {
         const pos = sim && p.sx !== undefined ? { x: p.sx!, y: p.sy! } : { x: p.x, y: p.y };
         const g = project(pos.x, pos.y);
@@ -691,6 +702,23 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
           selected: p.id === selected,
           bob,
         });
+        // Ziel markieren: ohne Marker ist unklar, wohin der Ball gehen soll.
+        if (!sim && p.id === target) {
+          const r = Math.max(5, Math.min(26, g.s));
+          targetMark = { X: g.X, top: g.Y - r * 1.55 - bob - r * 0.42 - 4 };
+        }
+      }
+      // Erst nach allen Spielern zeichnen, sonst verdecken Nachbarn das Etikett.
+      if (targetMark) {
+        const label = playType === 'pass' ? 'ZIEL' : 'BALL';
+        ctx.font = 'bold 10px monospace';
+        const w = ctx.measureText(label).width + 8;
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(targetMark.X - w / 2, targetMark.top - 13, w, 13);
+        ctx.fillStyle = '#0a0f1c';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, targetMark.X, targetMark.top - 3);
+        ctx.textAlign = 'left';
       }
 
       /* --- Ball (3D-Flugbahn mit Schatten) --- */
@@ -741,7 +769,7 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
       ctx.fillStyle = vg;
       ctx.fillRect(0, 0, W, H);
     },
-    [oCol, dCol, defName, selected, simState, drawToken]
+    [oCol, dCol, defName, selected, simState, target, playType, drawToken]
   );
 
   // draw + tick via Refs an die persistente Schleife geben
@@ -1076,11 +1104,11 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
 
   // Kamerawerte in das von der Zeichenschleife gelesene CAM-Objekt spiegeln.
   useEffect(() => {
-    applyCamPreset(camKey, zoom);
+    applyCamPreset(camKey);
     rerender();
     // rerender ist stabil genug (nur setState-Wrapper); bewusst nicht in den Deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [camKey, zoom]);
+  }, [camKey]);
 
   // Tastaturkürzel: Leertaste simuliert, Esc zurück, Backspace nimmt zurück.
   useEffect(() => {
@@ -1103,187 +1131,94 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
 
   const el = eligibles(playersRef.current.filter((p) => p.side === 'O'));
   const selPlayer = playersRef.current.find((p) => p.id === selected);
-  const allPlays = getTeamPlays(offTeam);
-  const teamPlays = playFilter
-    ? allPlays.filter((c) => c.name.toLowerCase().includes(playFilter.toLowerCase()))
-    : allPlays;
+  const signature = getTeamPlays(offTeam);
+  const more = CONCEPTS.filter((c) => !signature.includes(c));
   const activeConcept = activePlay ? CONCEPT_MAP[activePlay] : null;
+  const offShort = offName.split(' ').slice(-1)[0];
+  const covName = coverage.split(' — ')[0];
+  const goodFit = activeConcept ? strongAgainst(activeConcept, coverage) : false;
+  const alternatives =
+    activeConcept && !goodFit
+      ? countersFor(coverage, activeConcept.type)
+          .map((c) => c.name)
+          .slice(0, 3)
+      : [];
+  const editable = selPlayer?.side === 'O' && !['C', 'G', 'T'].includes(selPlayer.pos);
+
+  // Auf dem Handy liegen die Karten unter dem Feld: nach der Wahl zurück zum Feld,
+  // aber nur, wenn es aus dem Bild gerutscht ist (auf dem Desktop nie).
+  const stageRef = useRef<HTMLDivElement>(null);
+  const pickPlay = (c: Concept) => {
+    loadPlay(c);
+    const stage = stageRef.current;
+    if (stage && stage.getBoundingClientRect().top < 0) {
+      stage.scrollIntoView({ behavior: reducedRef.current ? 'auto' : 'smooth', block: 'start' });
+    }
+  };
+
+  // Neues Team im Angriff = dessen erster Signature-Play, damit das Feld nie leer ist.
+  const chooseOffTeam = (id: string) => {
+    setOffTeam(id);
+    const first = getTeamPlays(id)[0];
+    if (first) loadPlay(first);
+  };
+
+  const chooseCoverage = (c: Coverage) => {
+    setCoverage(c);
+    reassign(c);
+    if (simState !== 'edit') resetPositions();
+  };
+
+  const playCard = (c: Concept) => (
+    <button
+      key={c.key}
+      onClick={() => pickPlay(c)}
+      aria-pressed={activePlay === c.key}
+      className={`pd-card ${activePlay === c.key ? 'pd-card-on' : ''}`}
+    >
+      <PlayThumb concept={c} />
+      <span className="flex items-center justify-between gap-1.5 mt-1.5">
+        <span className="text-[13px] font-semibold leading-tight text-left">{c.name}</span>
+        <span className={`pd-tag ${c.type === 'run' ? 'pd-tag-run' : 'pd-tag-pass'}`}>
+          {c.type === 'run' ? 'LAUF' : 'PASS'}
+        </span>
+      </span>
+    </button>
+  );
 
   /* ---------------------------------- Render ------------------------------ */
 
   return (
-    <div className="grid xl:grid-cols-[260px_1fr_250px] gap-4">
-      {/* ------------------------------ Angriff ------------------------------ */}
-      <div className="card p-4 space-y-4 order-2 xl:order-1">
-        <div>
-          <div className="text-xs font-mono uppercase tracking-wider mb-1.5" style={{ color: oCol }}>
-            ● Angriff
-          </div>
-          <select value={offTeam} onChange={(e) => setOffTeam(e.target.value)} className="pd-select" aria-label="Team im Angriff">
-            {teams.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <div className="flex items-baseline justify-between gap-2">
-            <label className="pd-label" htmlFor="pd-playsearch">
-              Playbook · {allPlays.length}
-            </label>
-            {activePlay && (
-              <button onClick={() => { setActivePlay(''); clearAll(); }} className="text-[10px] text-mute hover:text-ink underline">
-                Auswahl lösen
-              </button>
-            )}
-          </div>
-          <input
-            id="pd-playsearch"
-            value={playFilter}
-            onChange={(e) => setPlayFilter(e.target.value)}
-            placeholder="Spielzug suchen …"
-            className="pd-select mb-2"
-          />
-          <div className="space-y-1.5 max-h-64 overflow-y-auto pd-scroll pr-1">
-            {teamPlays.map((c) => (
-              <button
-                key={c.key}
-                onClick={() => loadPlay(c)}
-                className={`pd-play ${activePlay === c.key ? 'pd-play-on' : ''}`}
-              >
-                <span className="pd-play-name">{c.name}</span>
-                <span className={`pd-tag ${c.type === 'run' ? 'pd-tag-run' : 'pd-tag-pass'}`}>
-                  {c.type === 'run' ? 'LAUF' : 'PASS'}
-                </span>
-              </button>
-            ))}
-            {teamPlays.length === 0 && (
-              <p className="text-[11px] text-mute py-2">Kein Spielzug passt zu „{playFilter}“.</p>
-            )}
-          </div>
-          {activeConcept && (
-            <p className="text-[11px] text-mute leading-relaxed mt-2 border-l-2 pl-2" style={{ borderColor: oCol }}>
-              {activeConcept.blurb}
-            </p>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <div className="col-span-2">
-            <label className="pd-label">Formation</label>
-            <select
-              value={formation}
-              onChange={(e) => {
-                setFormation(e.target.value);
-                setActivePlay('');
-                loadFormation(e.target.value, coverage);
-              }}
-              className="pd-select"
-            >
-              {Object.keys(OFF_FORMATIONS).map((f) => (
-                <option key={f}>{f}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="col-span-2">
-            <label className="pd-label">Spielart</label>
-            <div className="flex gap-2">
-              {(['pass', 'run'] as const).map((tp) => (
-                <button
-                  key={tp}
-                  onClick={() => setPlayType(tp)}
-                  aria-pressed={playType === tp}
-                  className={`flex-1 text-xs font-semibold py-1.5 rounded-lg border transition ${
-                    playType === tp ? 'border-primary bg-primary/15 text-primary' : 'border-line text-mute hover:text-ink'
-                  }`}
-                >
-                  {tp === 'pass' ? 'Pass' : 'Lauf'}
-                </button>
-              ))}
+    <div className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
+      {/* ------------------------------- Feld -------------------------------- */}
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
+          <div className="min-w-0">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-mute">
+              <span style={{ color: oCol }}>●</span> {offName} vs.{' '}
+              <span style={{ color: dCol }}>●</span> {defName}
+            </div>
+            <div className="font-display text-2xl font-bold leading-tight mt-0.5">
+              {activeConcept?.name ?? 'Eigener Spielzug'}
+              <span className="font-body text-base font-normal text-mute"> gegen {covName}</span>
             </div>
           </div>
-
-          <div className="col-span-2">
-            <label className="pd-label">{playType === 'pass' ? 'Ziel-Receiver' : 'Ballträger'}</label>
-            <select value={target} onChange={(e) => setTarget(e.target.value)} className="pd-select">
-              {el.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.pos} · {p.x < 0 ? 'links' : 'rechts'} außen ({Math.abs(Math.round(p.x))} yd)
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* ------------------------------- Feld -------------------------------- */}
-      <div className="order-1 xl:order-2">
-        {/* Steuerleiste: erst die Aktion, dann Tempo, dann Kamera */}
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <button
-            onClick={simState === 'running' ? undefined : replay}
-            disabled={simState === 'running'}
-            className="btn-primary text-sm font-bold px-5 py-2 rounded-lg text-white disabled:opacity-50"
-          >
-            {simState === 'running' ? '⏳ Läuft…' : simState === 'done' ? '↻ Nochmal' : '▶ Simulieren'}
-          </button>
-          <button onClick={resetPositions} className="pd-btn" title="Escape">↺ Editor</button>
-          <select
-            value={speed}
-            onChange={(e) => setSpeed(Number(e.target.value))}
-            className="pd-select !w-auto"
-            aria-label="Abspielgeschwindigkeit"
-          >
-            <option value={0.5}>0,5×</option>
-            <option value={1}>1×</option>
-            <option value={1.5}>1,5×</option>
-            <option value={2}>2×</option>
-          </select>
-
-          <span className="hidden sm:block w-px h-6 bg-line mx-1" />
-
-          {/* Kamera-Perspektiven */}
-          <div className="flex gap-1" role="group" aria-label="Kameraperspektive">
-            {(Object.keys(CAM_PRESETS) as CamKey[]).map((k) => (
+          <div className="pd-seg" role="group" aria-label="Kameraperspektive">
+            {CAM_ORDER.map((k) => (
               <button
                 key={k}
                 onClick={() => setCamKey(k)}
                 title={CAM_PRESETS[k].hint}
                 aria-pressed={camKey === k}
-                className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border transition ${
-                  camKey === k ? 'border-primary bg-primary/15 text-primary' : 'border-line text-mute hover:text-ink'
-                }`}
+                className={camKey === k ? 'pd-seg-on' : ''}
               >
                 {CAM_PRESETS[k].label}
               </button>
             ))}
           </div>
-          <label className="flex items-center gap-1.5 text-[11px] text-mute">
-            <span className="font-mono">Zoom</span>
-            <input
-              type="range"
-              min={0.85}
-              max={1.25}
-              step={0.05}
-              value={zoom}
-              onChange={(e) => setZoom(Number(e.target.value))}
-              className="w-20 accent-blue-400"
-              aria-label="Zoom"
-            />
-          </label>
-
-          <button onClick={savePng} className="pd-btn ml-auto">💾 PNG</button>
         </div>
 
-        {/* Ergebnis-Zeile hat feste Höhe, damit das Feld beim Simulieren nicht springt */}
-        <div className="min-h-[46px] mb-3">
-          {result && (
-            <div className="card px-4 py-3 text-sm font-semibold border-primary/40">{result}</div>
-          )}
-        </div>
-
-        <div className="pd-stage">
+        <div ref={stageRef} className={`pd-stage relative scroll-mt-28 ${camKey === 'all22' ? 'pd-crop' : ''}`}>
           <canvas
             ref={canvasRef}
             width={W}
@@ -1293,93 +1228,254 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
             style={{ touchAction: 'none' }}
-            className="w-full rounded-xl cursor-crosshair select-none"
+            className="w-full cursor-crosshair select-none"
+            aria-label={`Spielfeld: ${activeConcept?.name ?? 'eigener Spielzug'} gegen ${covName}`}
           />
+
+          {/* Ergebnis liegt über dem Feld: kein Layout-Sprung, und die Erklärung steht dort, wo man hinschaut. */}
+          {result && simState !== 'running' && (
+            <div
+              role="status"
+              className="pd-result absolute inset-x-3 top-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[min(92%,520px)]"
+            >
+              <div className="font-semibold">{result}</div>
+              {activeConcept && (
+                <p className="text-xs text-mute mt-1 leading-relaxed">
+                  {verdict(activeConcept.name, covName, goodFit, /^(✅|🏈)/.test(result), alternatives)}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2 mt-2.5">
+                <button onClick={replay} className="btn-primary text-xs font-bold px-3 py-1.5 rounded-lg text-white">
+                  ↻ Nochmal
+                </button>
+                <button onClick={resetPositions} className="pd-btn">
+                  Bearbeiten
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 mt-2">
-          <p className="text-[11px] text-mute font-mono">
-            {offName} <span style={{ color: oCol }}>●</span> vs. {defName}{' '}
-            <span style={{ color: dCol }}>●</span> · {coverage} · {CAM_PRESETS[camKey].label}
-          </p>
-          <p className="text-[11px] text-mute">
-            <kbd className="pd-kbd">Leertaste</kbd> simulieren ·{' '}
-            <kbd className="pd-kbd">Esc</kbd> zurück · <kbd className="pd-kbd">⌫</kbd> Wegpunkt zurück
-          </p>
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          <button
+            onClick={replay}
+            disabled={simState === 'running'}
+            className="btn-primary text-sm font-bold px-6 py-2.5 rounded-lg text-white disabled:opacity-60"
+          >
+            {simState === 'running' ? 'Läuft …' : simState === 'done' ? '↻ Nochmal abspielen' : '▶ Abspielen'}
+          </button>
+          {simState !== 'edit' && (
+            <button onClick={resetPositions} className="pd-btn" title="Esc">
+              ↺ Zur Aufstellung
+            </button>
+          )}
+          <div className="pd-seg" role="group" aria-label="Abspielgeschwindigkeit">
+            {[0.5, 1, 2].map((s) => (
+              <button
+                key={s}
+                onClick={() => setSpeed(s)}
+                aria-pressed={speed === s}
+                className={speed === s ? 'pd-seg-on' : ''}
+              >
+                {String(s).replace('.', ',')}×
+              </button>
+            ))}
+          </div>
+          <button onClick={savePng} className="pd-btn ml-auto" title="Aktuelles Bild als PNG speichern">
+            PNG speichern
+          </button>
+        </div>
+
+        {/* Kontexthilfe statt Anleitungsliste: sagt nur, was gerade möglich ist. */}
+        <div className="mt-3 text-sm text-mute min-h-[2.75rem]">
+          {simState === 'running' ? (
+            <p>Die Defense reagiert live auf deine Routen.</p>
+          ) : selPlayer ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span>
+                <strong className="text-ink">{selPlayer.pos}</strong> ausgewählt:{' '}
+                {editable ? 'tippe ins Feld, um einen Wegpunkt zu setzen.' : 'ziehen verschiebt die Position.'}
+              </span>
+              {editable && (
+                <>
+                  <button onClick={undoWaypoint} disabled={!selPlayer.route.length} className="pd-btn">
+                    ↶ Wegpunkt
+                  </button>
+                  <button onClick={clearRoute} className="pd-btn">
+                    ✕ Route
+                  </button>
+                </>
+              )}
+              <button onClick={() => setSelected(null)} className="pd-btn">
+                Fertig
+              </button>
+            </div>
+          ) : (
+            <p>
+              <strong className="text-ink">Tipp:</strong> Tippe einen Angreifer an, um seine Route neu zu
+              zeichnen, oder ziehe Spieler an eine andere Position.
+              <span className="hidden md:inline">
+                {' '}
+                · <kbd className="pd-kbd">Leertaste</kbd> abspielen · <kbd className="pd-kbd">Esc</kbd> zurück
+              </span>
+            </p>
+          )}
         </div>
       </div>
 
-      {/* ---------------------------- Verteidigung --------------------------- */}
-      <div className="card p-4 space-y-4 order-3">
-        <div>
-          <div className="text-xs font-mono uppercase tracking-wider mb-1.5" style={{ color: dCol }}>
-            ● Verteidigung
+      {/* ------------------------------ Steuerung ---------------------------- */}
+      <div className="space-y-4">
+        <section className="card p-4">
+          <StepTitle n={1} title="Teams" />
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className="pd-label">
+                <span style={{ color: oCol }}>●</span> Angriff
+              </span>
+              <select value={offTeam} onChange={(e) => chooseOffTeam(e.target.value)} className="pd-select">
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="pd-label">
+                <span style={{ color: dCol }}>●</span> Verteidigung
+              </span>
+              <select value={defTeam} onChange={(e) => setDefTeam(e.target.value)} className="pd-select">
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-          <select value={defTeam} onChange={(e) => setDefTeam(e.target.value)} className="pd-select" aria-label="Team in der Verteidigung">
-            {teams.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="pd-label">Coverage</label>
-          <select
-            value={coverage}
-            onChange={(e) => {
-              const c = e.target.value as Coverage;
-              setCoverage(c);
-              reassign(c);
-            }}
-            className="pd-select"
-          >
-            {COVERAGES.map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-          <p className="text-[11px] text-mute leading-relaxed mt-2 border-l-2 border-line pl-2">
-            {coverage.startsWith('Cover 1') && 'Manndeckung mit einem tiefen Free Safety als Absicherung.'}
-            {coverage.startsWith('Cover 2') && 'Zwei tiefe Safeties teilen sich das Feld — gestrichelte Linien zeigen die Zonen.'}
-            {coverage.startsWith('Cover 3') && 'Drei tiefe Zonen, vier Verteidiger darunter.'}
-            {coverage.startsWith('Cover 0') && 'Blitz! Sechs Rusher, Manndeckung ohne jede Absicherung.'}
-          </p>
-        </div>
+        </section>
 
-        {/* Routen-Werkzeuge: gehören zur Bearbeitung, darum direkt am Feld */}
-        <div>
-          <label className="pd-label">Routen</label>
-          <div className="space-y-2">
-            <button onClick={undoWaypoint} disabled={!selPlayer?.route.length} className="pd-btn w-full">
-              ↶ Wegpunkt zurück
-            </button>
-            <button onClick={clearRoute} disabled={!selPlayer} className="pd-btn w-full">
-              ✕ Route löschen {selPlayer ? `(${selPlayer.pos})` : ''}
-            </button>
-            <button onClick={clearAll} className="pd-btn w-full">✕ Alle Routen</button>
+        <section className="card p-4">
+          <StepTitle n={2} title="Spielzug wählen" />
+          <div className="pd-label">Signature-Plays der {offShort}</div>
+          <div className="grid grid-cols-2 gap-2">{signature.map(playCard)}</div>
+          <details className="mt-3">
+            <summary className="pd-summary">Weitere Spielzüge ({more.length})</summary>
+            <div className="grid grid-cols-2 gap-2 mt-2">{more.map(playCard)}</div>
+          </details>
+          {activeConcept && (
+            <div className="mt-3 rounded-lg bg-black/30 border border-line p-3">
+              <p className="text-sm leading-relaxed">{activeConcept.blurb}</p>
+              {activeConcept.beats.length > 0 && (
+                <p className="text-xs text-mute mt-2">
+                  Stark gegen:{' '}
+                  {activeConcept.beats.map((b) => (
+                    <span key={b} className="pd-pill">
+                      {b}
+                    </span>
+                  ))}
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+
+        <section className="card p-4">
+          <StepTitle n={3} title="Defense einstellen" />
+          <div className="grid grid-cols-2 gap-2">
+            {COVERAGES.map((c) => {
+              const fit = activeConcept ? strongAgainst(activeConcept, c) : false;
+              return (
+                <button
+                  key={c}
+                  onClick={() => chooseCoverage(c)}
+                  aria-pressed={coverage === c}
+                  className={`pd-cov ${coverage === c ? 'pd-cov-on' : ''}`}
+                >
+                  <span className="flex items-center justify-between gap-1">
+                    <span className="font-semibold text-sm">{c.split(' — ')[0]}</span>
+                    {fit && <span className="pd-fit">✓ passt</span>}
+                  </span>
+                  <span className="block text-[11px] text-mute mt-0.5">{COVERAGE_INFO[c].short}</span>
+                </button>
+              );
+            })}
           </div>
-        </div>
+          <p className="text-xs text-mute leading-relaxed mt-2">{COVERAGE_INFO[coverage].text}</p>
+        </section>
 
-        <div className="text-[11px] text-mute leading-relaxed border-t border-line pt-3">
-          <strong className="text-ink">So geht&apos;s</strong>
-          <ol className="list-decimal list-inside space-y-1 mt-1.5">
-            <li>Spielzug aus dem Playbook laden — oder selbst zeichnen.</li>
-            <li>Spieler antippen, dann ins Feld tippen = Wegpunkt.</li>
-            <li>Spieler ziehen verschiebt die Startposition.</li>
-            <li>Auf <strong className="text-ink">▶ Simulieren</strong> tippen.</li>
-          </ol>
-          <p className="text-warn mt-2">Die Defense stellt sich automatisch auf deine Formation ein.</p>
-        </div>
+        <details className="card p-4">
+          <summary className="pd-summary">Profi-Optionen: Formation, Ziel, Routen</summary>
+          <div className="space-y-3 mt-3">
+            <label className="block">
+              <span className="pd-label">Formation</span>
+              <select
+                value={formation}
+                onChange={(e) => {
+                  setFormation(e.target.value);
+                  setActivePlay('');
+                  loadFormation(e.target.value, coverage);
+                }}
+                className="pd-select"
+              >
+                {Object.keys(OFF_FORMATIONS).map((f) => (
+                  <option key={f}>{f}</option>
+                ))}
+              </select>
+            </label>
+            <div>
+              <span className="pd-label">Spielart</span>
+              <div className="pd-seg w-full" role="group" aria-label="Spielart">
+                {(['pass', 'run'] as const).map((tp) => (
+                  <button
+                    key={tp}
+                    onClick={() => setPlayType(tp)}
+                    aria-pressed={playType === tp}
+                    className={`flex-1 ${playType === tp ? 'pd-seg-on' : ''}`}
+                  >
+                    {tp === 'pass' ? 'Pass' : 'Lauf'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <label className="block">
+              <span className="pd-label">{playType === 'pass' ? 'Ziel-Receiver' : 'Ballträger'}</span>
+              <select value={target} onChange={(e) => setTarget(e.target.value)} className="pd-select">
+                {el.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.pos} · {p.x < 0 ? 'links' : 'rechts'} ({Math.abs(Math.round(p.x))} yd von der Mitte)
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button onClick={clearAll} className="pd-btn w-full">
+              ✕ Alle Routen löschen
+            </button>
+          </div>
+        </details>
       </div>
 
       <style jsx global>{`
         .pd-stage {
           border-radius: 0.75rem;
           padding: 1px;
+          overflow: hidden;
           background: linear-gradient(160deg, rgba(96, 165, 250, 0.5), rgba(34, 197, 94, 0.25), transparent 70%);
           box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
         }
         .pd-stage canvas {
           display: block;
+          border-radius: 0.7rem;
           background: #070b16;
+        }
+        /* Von oben füllt das Feld nur die Bildmitte; auf dem Handy daher auf das Feld zuschneiden. */
+        @media (max-width: 640px) {
+          .pd-crop canvas {
+            width: 180%;
+            max-width: none;
+            margin-left: -40%;
+            border-radius: 0;
+          }
         }
         .pd-select {
           width: 100%;
@@ -1412,28 +1508,61 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
         }
         .pd-btn:hover:not(:disabled) { color: #e2e8f0; border-color: #3b82f6; }
         .pd-btn:disabled { opacity: 0.4; }
-        .pd-play {
-          width: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 0.5rem;
-          padding: 0.5rem 0.65rem;
-          border-radius: 0.55rem;
+        .pd-seg {
+          display: inline-flex;
+          gap: 2px;
+          padding: 3px;
           border: 1px solid #1f2a44;
-          background: rgba(0, 0, 0, 0.25);
+          border-radius: 0.6rem;
+          background: rgba(0, 0, 0, 0.35);
+        }
+        .pd-seg button {
+          font-size: 0.75rem;
+          font-weight: 600;
+          padding: 0.35rem 0.7rem;
+          border-radius: 0.45rem;
+          color: #94a3b8;
           transition: all 0.15s;
         }
-        .pd-play:hover { border-color: #3b82f6; transform: translateX(2px); }
-        .pd-play-on {
-          border-color: #3b82f6;
-          background: rgba(59, 130, 246, 0.12);
+        .pd-seg button:hover { color: #e2e8f0; }
+        .pd-seg .pd-seg-on { background: #3b82f6; color: #fff; }
+        .pd-card {
+          display: block;
+          width: 100%;
+          text-align: left;
+          padding: 0.45rem;
+          border-radius: 0.65rem;
+          border: 1px solid #1f2a44;
+          background: rgba(0, 0, 0, 0.25);
+          transition: border-color 0.15s, transform 0.15s;
         }
-        .pd-play-name {
-          font-size: 0.8rem;
-          font-weight: 600;
-          color: #e2e8f0;
+        .pd-card:hover { border-color: #3b82f6; transform: translateY(-1px); }
+        .pd-card-on {
+          border-color: #fbbf24;
+          background: rgba(251, 191, 36, 0.08);
+          box-shadow: inset 0 0 0 1px #fbbf24;
         }
+        .pd-cov {
+          text-align: left;
+          padding: 0.55rem 0.65rem;
+          border-radius: 0.6rem;
+          border: 1px solid #1f2a44;
+          background: rgba(0, 0, 0, 0.25);
+          transition: border-color 0.15s;
+        }
+        .pd-cov:hover { border-color: #3b82f6; }
+        .pd-cov-on { border-color: #3b82f6; background: rgba(59, 130, 246, 0.14); }
+        .pd-fit,
+        .pd-pill {
+          font-size: 0.6rem;
+          font-weight: 700;
+          color: #86efac;
+          background: rgba(34, 197, 94, 0.16);
+          padding: 0.1rem 0.4rem;
+          border-radius: 999px;
+          white-space: nowrap;
+        }
+        .pd-pill { display: inline-block; margin-right: 0.3rem; }
         .pd-tag {
           font-size: 0.55rem;
           font-family: var(--font-jetbrains), monospace;
@@ -1444,10 +1573,36 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
         }
         .pd-tag-pass { background: rgba(59, 130, 246, 0.18); color: #93c5fd; }
         .pd-tag-run { background: rgba(34, 197, 94, 0.18); color: #86efac; }
-        .pd-scroll::-webkit-scrollbar { width: 6px; }
-        .pd-scroll::-webkit-scrollbar-thumb {
-          background: #1f2a44;
+        .pd-step {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 1.5rem;
+          height: 1.5rem;
           border-radius: 999px;
+          background: #3b82f6;
+          color: #fff;
+          font-size: 0.75rem;
+          font-family: var(--font-jetbrains), monospace;
+        }
+        .pd-summary {
+          cursor: pointer;
+          list-style: none;
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: #94a3b8;
+        }
+        .pd-summary::-webkit-details-marker { display: none; }
+        .pd-summary::before { content: '▸ '; }
+        details[open] > .pd-summary::before { content: '▾ '; }
+        .pd-summary:hover { color: #e2e8f0; }
+        .pd-result {
+          background: rgba(10, 15, 28, 0.92);
+          border: 1px solid rgba(59, 130, 246, 0.45);
+          border-radius: 0.75rem;
+          padding: 0.75rem 1rem;
+          backdrop-filter: blur(6px);
+          box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.7);
         }
         .pd-kbd {
           font-family: var(--font-jetbrains), monospace;
@@ -1461,7 +1616,8 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
         @media (pointer: coarse) {
           .pd-select,
           .pd-btn,
-          .pd-play {
+          .pd-seg button,
+          .pd-cov {
             min-height: 44px;
           }
         }
@@ -1469,6 +1625,83 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
     </div>
   );
 }
+
+/* ------------------------------- Bausteine -------------------------------- */
+
+const CAM_ORDER: CamKey[] = ['all22', 'broadcast', 'endzone', 'sideline'];
+
+const COVERAGE_INFO: Record<Coverage, { short: string; text: string }> = {
+  'Cover 1 — Man Free': { short: 'Mann + 1 tief', text: 'Manndeckung, ein Free Safety sichert tief ab.' },
+  'Cover 2 — Zone': { short: '2 tiefe Zonen', text: 'Zwei Safeties teilen sich das tiefe Feld, darunter fünf Zonen.' },
+  'Cover 3 — Zone': { short: '3 tiefe Zonen', text: 'Drei tiefe Zonen, vier Verteidiger decken darunter.' },
+  'Cover 0 — Blitz': { short: 'Blitz, Mann', text: 'Sechs Rusher, Manndeckung ohne jede tiefe Absicherung.' },
+};
+
+/**
+ * Erklärung unter dem Ergebnis. Die Simulation würfelt, deshalb trennt der Text
+ * die Theorie (passt das Konzept zur Coverage?) vom tatsächlichen Ausgang.
+ */
+export function verdict(
+  play: string,
+  cov: string,
+  goodFit: boolean,
+  success: boolean,
+  alternatives: string[]
+): string {
+  const others = alternatives.length > 0 ? ` Lehrbuch-Antworten auf ${cov}: ${alternatives.join(', ')}.` : '';
+  if (goodFit && success) return `Passt: ${play} ist stark gegen ${cov}.`;
+  if (goodFit) return `Eigentlich die richtige Wahl, ${play} ist stark gegen ${cov}. Diesmal war die Defense schneller.`;
+  if (success) return `Hat geklappt, obwohl ${play} gegen ${cov} keinen Vorteil hat.${others}`;
+  return `${play} hat gegen ${cov} keinen Vorteil.${others}`;
+}
+
+function StepTitle({ n, title }: { n: number; title: string }) {
+  return (
+    <h2 className="flex items-center gap-2 font-display text-lg font-bold mb-3">
+      <span className="pd-step">{n}</span>
+      {title}
+    </h2>
+  );
+}
+
+/** Mini-Diagramm eines Spielzugs von oben, wie die Play Art in einem Playbook. Ziel-Route in Gold. */
+const PlayThumb = memo(function PlayThumb({ concept }: { concept: Concept }) {
+  const off = OFF_FORMATIONS[concept.formation]();
+  const target = concept.apply(off);
+  return (
+    <svg
+      viewBox="-27 -24 54 33"
+      className="block w-full h-auto rounded-md"
+      style={{ background: '#0c3a24' }}
+      aria-hidden="true"
+    >
+      {[-20, -15, -10, -5, 5].map((y) => (
+        <line key={y} x1={-27} x2={27} y1={y} y2={y} stroke="rgba(255,255,255,.1)" strokeWidth={0.25} />
+      ))}
+      <line x1={-27} x2={27} y1={0} y2={0} stroke="rgba(96,165,250,.8)" strokeWidth={0.4} />
+      {off.map((p) =>
+        p.route.length > 0 ? (
+          <polyline
+            key={`${p.id}-r`}
+            points={[p, ...p.route].map((w) => `${w.x},${w.y}`).join(' ')}
+            fill="none"
+            stroke={p.id === target ? '#fbbf24' : 'rgba(226,232,240,.85)'}
+            strokeWidth={p.id === target ? 0.9 : 0.6}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ) : null
+      )}
+      {off.map((p) =>
+        ['C', 'G', 'T'].includes(p.pos) ? (
+          <rect key={p.id} x={p.x - 0.8} y={p.y - 0.8} width={1.6} height={1.6} fill="#94a3b8" />
+        ) : (
+          <circle key={p.id} cx={p.x} cy={p.y} r={1.15} fill={p.id === target ? '#fbbf24' : '#f8fafc'} />
+        )
+      )}
+    </svg>
+  );
+});
 
 /* ------------------------------- Farb-Helfer ------------------------------ */
 

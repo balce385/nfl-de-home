@@ -42,10 +42,10 @@ export type CamPreset = {
  * Die Werte prüft `playbook-camera.test.ts` gegen die Leinwandmaße.
  */
 export const CAM_PRESETS: Record<CamKey, CamPreset> = {
-  broadcast: { label: 'Broadcast', hint: 'Klassische TV-Perspektive', back: 15, height: 24, focal: 270, horizon: 120 },
+  broadcast: { label: 'TV', hint: 'Klassische TV-Perspektive', back: 15, height: 24, focal: 270, horizon: 120 },
   sideline: { label: 'Seitenlinie', hint: 'Tief und dicht am Rasen', back: 8, height: 29, focal: 140, horizon: 78 },
   endzone: { label: 'Endzone', hint: 'Hinter dem Quarterback', back: 27, height: 40, focal: 430, horizon: -70 },
-  all22: { label: 'All-22', hint: 'Coaching-Sicht von oben', back: 90, height: 156, focal: 900, horizon: -980 },
+  all22: { label: 'Von oben', hint: 'Coaching-Sicht (All-22)', back: 90, height: 156, focal: 900, horizon: -980 },
 };
 
 /** Aktive Kamera. Wird vom UI überschrieben, die Zeichenschleife liest live mit. */
