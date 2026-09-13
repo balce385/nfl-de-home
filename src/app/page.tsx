@@ -32,7 +32,7 @@ export default async function HomePage() {
     <>
       <LiveTicker />
       <Navbar />
-      <main>
+      <main id="inhalt">
         <Hero />
 
         {/* Alle Team-Abschnitte teilen sich die Auswahl aus dem

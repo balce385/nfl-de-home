@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { getCommunityStats } from '@/lib/community';
 import { ChatRoom } from './ChatRoom';
 
 export const metadata = {
@@ -25,11 +26,23 @@ export default async function CommunityPage() {
     data: { session },
   } = await supabase.auth.getSession();
 
+  // Echte Zahl statt Wunschdenken: frueher stand hier fest "12.400 Fans".
+  const { memberCount } = await getCommunityStats();
+
   return (
     <div className="max-w-7xl mx-auto px-6 pt-16 pb-12">
       <span className="chip">Community</span>
       <h1 className="font-display text-5xl font-bold mt-4 leading-tight">
-        12.400 Fans. <span className="grad-text italic">Eine Heimat.</span>
+        {memberCount > 0 ? (
+          <>
+            {memberCount.toLocaleString('de-DE')} {memberCount === 1 ? 'Fan' : 'Fans'}.{' '}
+            <span className="grad-text italic">Eine Heimat.</span>
+          </>
+        ) : (
+          <>
+            Die Channels stehen. <span className="grad-text italic">Fehlst nur noch du.</span>
+          </>
+        )}
       </h1>
       <p className="text-mute mt-3 text-lg max-w-2xl">
         Wähle einen Channel und steig direkt in die Diskussion ein. Moderiert, deutschsprachig,

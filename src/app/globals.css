@@ -35,6 +35,32 @@
     background: rgba(59, 130, 246, 0.4);
     color: white;
   }
+
+  /* Tastaturbedienung: ohne diese Regel bleibt der Fokus auf dem dunklen
+     Hintergrund praktisch unsichtbar (Links hatten outline: none). */
+  :focus-visible {
+    outline: 2px solid #60a5fa;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Sprunglink zum Inhalt: nur sichtbar, wenn er den Fokus hat. */
+  .skip-link {
+    position: absolute;
+    left: 1rem;
+    top: -4rem;
+    z-index: 100;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    background: #1d4ed8;
+    color: #ffffff;
+    font-size: 0.875rem;
+    transition: top 0.15s ease-in-out;
+  }
+
+  .skip-link:focus {
+    top: 1rem;
+  }
 }
 
 @layer components {

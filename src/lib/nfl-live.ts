@@ -25,6 +25,35 @@ export const normalizeAbbr = (abbr: string) => ABBR_MAP[abbr] ?? abbr;
 const ABBR_MAP_REVERSE: Record<string, string> = { WAS: 'WSH', LAR: 'LA' };
 export const denormalizeAbbr = (abbr: string) => ABBR_MAP_REVERSE[abbr] ?? abbr;
 
+const kickoffFmt = new Intl.DateTimeFormat('de-DE', {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Europe/Berlin',
+});
+
+/**
+ * Statuszeile eines Spiels in deutscher Schreibweise.
+ *
+ * ESPN liefert in `shortDetail` bei angesetzten Spielen die US-Ortszeit
+ * ("9/13 - 1:00 PM EDT"). Fuer ein deutschsprachiges Publikum wird daraus die
+ * Anstosszeit in Europe/Berlin. Laufende und beendete Spiele behalten den
+ * ESPN-Text ("Q3 5:12", "Final"), der ist sprachneutral genug.
+ */
+export function gameStatusText(
+  state: string | undefined,
+  shortDetail: string | undefined,
+  kickoff: string | null | undefined,
+): string {
+  if (state === 'pre' && kickoff) {
+    const d = new Date(kickoff);
+    if (!Number.isNaN(d.getTime())) return `${kickoffFmt.format(d)} Uhr`;
+  }
+  return shortDetail ?? '';
+}
+
 async function getJSON<T = any>(url: string, revalidate = 60): Promise<T | null> {
   try {
     const res = await fetch(url, { next: { revalidate } });
@@ -102,7 +131,11 @@ export async function getScoreboard(): Promise<LiveGame[]> {
         away: side('away'),
         kickoff: event.date ?? null,
         state: comp?.status?.type?.state ?? 'pre',
-        statusText: comp?.status?.type?.shortDetail ?? '',
+        statusText: gameStatusText(
+          comp?.status?.type?.state,
+          comp?.status?.type?.shortDetail,
+          event.date,
+        ),
         venue: comp?.venue?.fullName ?? '',
       };
     })
@@ -166,6 +199,10 @@ export type NewsItem = {
   image: string | null;
 };
 
+/** ESPN liefert vereinzelt http-Links; die Seite selbst laeuft nur ueber https. */
+const toHttps = (url: string | null | undefined) =>
+  url ? url.replace(/^http:\/\//i, 'https://') : null;
+
 export async function getNews(teamAbbr?: string, limit = 6): Promise<NewsItem[]> {
   const url = teamAbbr
     ? `${SITE}/news?team=${encodeURIComponent(teamAbbr)}&limit=${limit}`
@@ -175,8 +212,8 @@ export async function getNews(teamAbbr?: string, limit = 6): Promise<NewsItem[]>
     headline: a.headline ?? '',
     description: a.description ?? '',
     published: a.published ?? null,
-    link: a.links?.web?.href ?? null,
-    image: a.images?.[0]?.url ?? null,
+    link: toHttps(a.links?.web?.href),
+    image: toHttps(a.images?.[0]?.url),
   }));
 }
 
@@ -383,7 +420,11 @@ function buildSituation(event: any): GameSituation | null {
     eventId: String(event.id),
     shortName: event.shortName ?? `${away.code} @ ${home.code}`,
     state: comp?.status?.type?.state ?? 'pre',
-    statusText: comp?.status?.type?.shortDetail ?? '',
+    statusText: gameStatusText(
+      comp?.status?.type?.state,
+      comp?.status?.type?.shortDetail,
+      event.date,
+    ),
     period: comp?.status?.period ?? null,
     clock: comp?.status?.displayClock ?? null,
     venue: comp?.venue?.fullName ?? '',

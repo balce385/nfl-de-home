@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getNews, denormalizeAbbr } from '@/lib/nfl-live';
+import { TEAM_MEDIA } from '@/data/team-media';
+
+const VALID_TEAMS = new Set(TEAM_MEDIA.map((t) => t.teamId));
 
 /**
  * Server-seitiger Proxy für ESPN-Team-News.
@@ -13,6 +16,12 @@ import { getNews, denormalizeAbbr } from '@/lib/nfl-live';
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const team = searchParams.get('team')?.toUpperCase() || undefined;
+
+  // Unbekannte Kuerzel liefen vorher als leere Liste mit Status 200 durch —
+  // /api/team-overview antwortet in dem Fall mit 404, also hier genauso.
+  if (team && !VALID_TEAMS.has(team)) {
+    return NextResponse.json({ error: 'team not found' }, { status: 404 });
+  }
 
   const limitParam = Number(searchParams.get('limit'));
   const limit =

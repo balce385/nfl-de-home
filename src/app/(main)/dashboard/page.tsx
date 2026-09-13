@@ -3,7 +3,8 @@ import { TrendingUp, Trophy, Users, Bell, type LucideIcon } from 'lucide-react';
 import { DashboardSidebar } from '@/components/dashboard/Sidebar';
 import { PlayerExplorer } from '@/components/dashboard/PlayerExplorer';
 import { createClient } from '@/lib/supabase/server';
-import { getScoreboard, getStandings, getAllTeams } from '@/lib/nfl-live';
+import { getScoreboard, getStandings, getAllTeams, getNews } from '@/lib/nfl-live';
+import { getCommunityStats } from '@/lib/community';
 import { featuredPlayer, topTeams, articles, liveGame } from '@/lib/mock-data';
 
 type DashboardData = {
@@ -11,7 +12,6 @@ type DashboardData = {
   topTeams: typeof topTeams;
   articles: typeof articles;
   liveGame: typeof liveGame;
-  stats: { watchlistCount: number; fantasyRank: string; channels: number; alerts: number };
   isLive: boolean;
 };
 
@@ -23,7 +23,6 @@ async function fetchDashboardData(token: string | null): Promise<DashboardData> 
     topTeams,
     articles,
     liveGame,
-    stats: { watchlistCount: 12, fantasyRank: '#2', channels: 7, alerts: 4 },
     isLive: false,
   };
 
@@ -41,13 +40,14 @@ async function fetchDashboardData(token: string | null): Promise<DashboardData> 
       topTeams: data.topTeams ?? topTeams,
       articles: data.articles ?? articles,
       liveGame: data.liveGame ?? liveGame,
-      stats: data.stats ?? fallback.stats,
       isLive: true,
     };
   } catch {
     return fallback;
   }
 }
+
+export const metadata = { title: 'Dashboard — dein Wochenueberblick' };
 
 export default async function DashboardPage() {
   // Kein Login mehr nötig — Dashboard ist offen.
@@ -61,12 +61,20 @@ export default async function DashboardPage() {
   } = await supabase.auth.getSession();
 
   // Live-Daten (ESPN) parallel zu den Dashboard-Daten laden
-  const [data, liveGames, standings, allTeams] = await Promise.all([
+  const [data, liveGames, standings, allTeams, community, news] = await Promise.all([
     fetchDashboardData(session?.access_token ?? null),
     getScoreboard(),
     getStandings(),
     getAllTeams(),
+    getCommunityStats(),
+    getNews(undefined, 20),
   ]);
+
+  // Woche und Saison kommen aus den Live-Daten, nicht aus einer festen Zahl.
+  const season = liveGames.find((g) => g.season)?.season ?? null;
+  const week = liveGames.find((g) => g.week)?.week ?? null;
+  const liveNow = liveGames.filter((g) => g.state === 'in').length;
+  const bestTeam = standings[0] ?? null;
 
   // Mock-Daten durch Live-Daten ersetzen, sobald verfügbar
   const espnGame =
@@ -121,14 +129,16 @@ export default async function DashboardPage() {
         {/* Header */}
         <div className="flex items-end justify-between mb-8 flex-wrap gap-4">
           <div>
-            {!data.isLive && (
-              <span className="chip-accent chip">Demo · Backend nicht erreichbar</span>
+            {liveGames.length === 0 && (
+              <span className="chip-accent chip">Keine Live-Daten erreichbar</span>
             )}
             <h1 className="font-display text-4xl font-bold mt-3">
               Hallo <span className="grad-text italic">{firstName}.</span>
             </h1>
             <p className="text-mute mt-1 text-sm">
-              Dein Wochenüberblick für Week 8 der Saison 2026.
+              {week && season
+                ? `Dein Wochenüberblick für Week ${week} der Saison ${season}.`
+                : 'Dein Wochenüberblick — sobald die nächsten Spiele angesetzt sind.'}
             </p>
           </div>
           <div className="flex items-center gap-2 text-xs font-mono text-mute">
@@ -140,30 +150,32 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <KPI
             icon={TrendingUp}
-            label="Watchlist-Spieler"
-            value={String(data.stats.watchlistCount)}
-            change="+3 diese Woche"
+            label="Spiele diese Woche"
+            value={String(liveGames.length)}
+            change={liveNow > 0 ? `${liveNow} laufen gerade` : 'keins läuft gerade'}
             tone="accent"
           />
           <KPI
             icon={Trophy}
-            label="Fantasy-Rang"
-            value={data.stats.fantasyRank}
-            change="von 14"
+            label="Bestes Team"
+            value={bestTeam?.code ?? '—'}
+            change={bestTeam ? bestTeam.record : 'Standings laden'}
             tone="primary"
           />
           <KPI
             icon={Users}
             label="Channels"
-            value={String(data.stats.channels)}
-            change="218 online"
+            value={String(community.channels.length)}
+            change={`${community.memberCount.toLocaleString('de-DE')} ${
+              community.memberCount === 1 ? 'Mitglied' : 'Mitglieder'
+            }`}
             tone="warn"
           />
           <KPI
             icon={Bell}
-            label="Offene Alerts"
-            value={String(data.stats.alerts)}
-            change="3 ungelesen"
+            label="Meldungen"
+            value={String(news.length)}
+            change="live von ESPN"
             tone="danger"
           />
         </div>
@@ -192,7 +204,7 @@ export default async function DashboardPage() {
                     {data.liveGame.clock}
                   </span>
                 </div>
-                <Link href="#" className="text-xs text-primary hover:text-accent">
+                <Link href="/news" className="text-xs text-primary hover:text-accent">
                   Box-Score →
                 </Link>
               </div>

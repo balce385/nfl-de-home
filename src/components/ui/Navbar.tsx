@@ -30,6 +30,7 @@ export function Navbar() {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  aria-current={isActive ? 'page' : undefined}
                   className={cn('hover:text-ink transition', isActive && 'text-ink')}
                 >
                   {item.label}
@@ -46,6 +47,26 @@ export function Navbar() {
           Zum Dashboard
         </Link>
       </nav>
+
+      {/* Unter lg ist oben kein Platz fuer sieben Punkte: gleiche Navigation als
+          horizontal scrollbare Leiste, damit alle Reiter auch am Handy
+          erreichbar bleiben. */}
+      <ul className="lg:hidden flex items-center gap-5 overflow-x-auto px-6 pb-2 text-sm text-mute font-medium whitespace-nowrap">
+        {navItems.map((item) => {
+          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                aria-current={isActive ? 'page' : undefined}
+                className={cn('hover:text-ink transition', isActive && 'text-ink')}
+              >
+                {item.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
     </header>
   );
 }

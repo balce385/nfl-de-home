@@ -109,6 +109,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ShaderWallpaper variant="aurora" />
         {/* Inhalt liegt über dem Shader. Die Team-Wahl gilt seitenübergreifend
             (Startseite, Magazin) und wird im Browser gespeichert. */}
+        <a href="#inhalt" className="skip-link">
+          Zum Inhalt springen
+        </a>
         <TeamSelectionProvider>
           <div style={{ position: 'relative', zIndex: 1 }}>{children}</div>
         </TeamSelectionProvider>

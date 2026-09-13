@@ -144,7 +144,10 @@ export function AdvancedStatsTable({
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-line">
-              <th className="text-left font-mono text-[10px] uppercase tracking-wider text-mute px-4 py-3">
+              <th
+                scope="col"
+                className="text-left font-mono text-[10px] uppercase tracking-wider text-mute px-4 py-3"
+              >
                 Spieler
               </th>
               {columns.map((c) => {
@@ -152,6 +155,7 @@ export function AdvancedStatsTable({
                 return (
                   <th
                     key={String(c.key)}
+                    scope="col"
                     className="px-3 py-3 text-right"
                     aria-sort={active ? (asc ? 'ascending' : 'descending') : 'none'}
                   >

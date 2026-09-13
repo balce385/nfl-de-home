@@ -68,12 +68,6 @@ export async function CommunitySection() {
             >
               Zur Community
             </Link>
-            <Link
-              href="/register"
-              className="px-5 py-2.5 rounded-lg text-sm font-semibold border border-line hover:border-primary transition"
-            >
-              Konto anlegen
-            </Link>
           </div>
         </div>
 
