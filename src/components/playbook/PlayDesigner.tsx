@@ -1650,7 +1650,8 @@ export function verdict(
 ): string {
   const others = alternatives.length > 0 ? ` Lehrbuch-Antworten auf ${cov}: ${alternatives.join(', ')}.` : '';
   if (goodFit && success) return `Passt: ${play} ist stark gegen ${cov}.`;
-  if (goodFit) return `Eigentlich die richtige Wahl, ${play} ist stark gegen ${cov}. Diesmal war die Defense schneller.`;
+  // Neutral formuliert: der Fehlschlag kann ein Sack, ein ungenauer Wurf oder eine Interception sein.
+  if (goodFit) return `Eigentlich die richtige Wahl, ${play} ist stark gegen ${cov}. Diesmal hat es nicht geklappt, probier es nochmal.`;
   if (success) return `Hat geklappt, obwohl ${play} gegen ${cov} keinen Vorteil hat.${others}`;
   return `${play} hat gegen ${cov} keinen Vorteil.${others}`;
 }

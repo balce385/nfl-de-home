@@ -5,7 +5,7 @@ import { OFF_FORMATIONS, verdict } from '@/components/playbook/PlayDesigner';
 describe('Erklärung unter dem Ergebnis', () => {
   it('widerspricht dem Ausgang nicht', () => {
     // Genau dieser Fall stand vorher als "stark gegen Cover 1" unter einem Sack.
-    expect(verdict('Y-Cross', 'Cover 1', true, false, [])).toContain('Diesmal war die Defense schneller');
+    expect(verdict('Y-Cross', 'Cover 1', true, false, [])).toContain('Diesmal hat es nicht geklappt');
     expect(verdict('Smash', 'Cover 2', true, true, [])).toBe('Passt: Smash ist stark gegen Cover 2.');
     expect(verdict('Mesh', 'Cover 3', false, true, ['Dagger'])).toMatch(/^Hat geklappt.*Dagger/);
     expect(verdict('Mesh', 'Cover 3', false, false, [])).toBe('Mesh hat gegen Cover 3 keinen Vorteil.');
