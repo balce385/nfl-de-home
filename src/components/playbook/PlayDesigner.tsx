@@ -1232,11 +1232,12 @@ export function PlayDesigner({ teams }: { teams: PdTeam[] }) {
             aria-label={`Spielfeld: ${activeConcept?.name ?? 'eigener Spielzug'} gegen ${covName}`}
           />
 
-          {/* Ergebnis liegt über dem Feld: kein Layout-Sprung, und die Erklärung steht dort, wo man hinschaut. */}
+          {/* Ab Tablet liegt das Ergebnis über dem Feld (kein Layout-Sprung). Auf dem Handy
+              ist das Feld zu flach dafür, es würde fast ganz verdeckt: dort steht es darunter. */}
           {result && simState !== 'running' && (
             <div
               role="status"
-              className="pd-result absolute inset-x-3 top-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[min(92%,520px)]"
+              className="pd-result m-2 sm:m-0 sm:absolute sm:top-3 sm:left-1/2 sm:-translate-x-1/2 sm:w-[min(92%,520px)]"
             >
               <div className="font-semibold">{result}</div>
               {activeConcept && (
