@@ -55,6 +55,13 @@ type QbStats = {
 
 type TeamNews = { headline: string; description: string; link: string | null; published: string | null };
 
+type TeamProfile = {
+  venue: { name: string; location: string; grass: boolean; indoor: boolean; capacity: number | null };
+  coach: { name: string; experience: number | null; headshot: string | null } | null;
+  founded: number | null;
+  website: string;
+};
+
 const dateFmt = new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
 
 export function TeamShowcase({
@@ -75,11 +82,13 @@ export function TeamShowcase({
 
   const [qb, setQb] = useState<QbStats | null>(null);
   const [news, setNews] = useState<TeamNews | null>(null);
+  const [profile, setProfile] = useState<TeamProfile | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setQb(null);
     setNews(null);
+    setProfile(null);
 
     const team = encodeURIComponent(selected);
     fetch(`/api/team-stats?team=${team}`)
@@ -89,6 +98,10 @@ export function TeamShowcase({
     fetch(`/api/team-news?team=${team}&limit=1`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('news'))))
       .then((d) => !cancelled && setNews(d?.articles?.[0] ?? null))
+      .catch(() => {});
+    fetch(`/api/team-profile?team=${team}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('profile'))))
+      .then((d) => !cancelled && setProfile(d))
       .catch(() => {});
 
     return () => {
@@ -253,6 +266,54 @@ export function TeamShowcase({
         </section>
 
         <section className="lg:col-span-2">
+          <h3 className="font-display text-lg font-bold mb-3">Steckbrief</h3>
+          {profile ? (
+            <div className="card p-5">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Fact label="Heimstadion" value={profile.venue.name} hint={profile.venue.location} />
+                <Fact
+                  label="Kapazität"
+                  value={
+                    profile.venue.capacity
+                      ? `${profile.venue.capacity.toLocaleString('de-DE')} Plätze`
+                      : '—'
+                  }
+                  hint={`${profile.venue.grass ? 'Naturrasen' : 'Kunstrasen'} · ${
+                    profile.venue.indoor ? 'überdacht' : 'offen'
+                  }`}
+                />
+                <Fact
+                  label="Cheftrainer"
+                  value={profile.coach?.name ?? '—'}
+                  hint={
+                    profile.coach?.experience
+                      ? `${profile.coach.experience}. Jahr als Head Coach`
+                      : undefined
+                  }
+                />
+                <Fact
+                  label="Gegründet"
+                  value={profile.founded ? String(profile.founded) : '—'}
+                  hint={
+                    profile.founded ? `${new Date().getFullYear() - profile.founded} Jahre` : undefined
+                  }
+                />
+              </div>
+              <a
+                href={`https://${profile.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-4 text-sm text-primary hover:text-accent"
+              >
+                {profile.website} →
+              </a>
+            </div>
+          ) : (
+            <div className="card p-5 text-sm text-mute">Lade Steckbrief …</div>
+          )}
+        </section>
+
+        <section className="lg:col-span-2">
           <h3 className="font-display text-lg font-bold mb-3">Neueste Meldung</h3>
           {news ? (
             <HighlightBanner
@@ -270,6 +331,16 @@ export function TeamShowcase({
           )}
         </section>
       </div>
+    </div>
+  );
+}
+
+function Fact({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div>
+      <div className="text-[10px] font-mono uppercase tracking-wider text-mute">{label}</div>
+      <div className="font-medium mt-1 leading-tight">{value}</div>
+      {hint && <div className="text-xs text-mute mt-0.5">{hint}</div>}
     </div>
   );
 }

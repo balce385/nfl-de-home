@@ -12,10 +12,14 @@
 
 import type { Player } from '@/types';
 import { TEAM_QBS, buildFeaturedPlayer } from '@/data/team-qbs';
+import { TEAM_FACTS } from '@/data/team-facts';
 
 const SITE = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl';
 const STANDINGS = 'https://site.api.espn.com/apis/v2/sports/football/nfl/standings';
 const WEB = 'https://site.web.api.espn.com/apis/common/v3/sports/football/nfl';
+// Die Core-API liefert Stammdaten, die in der Site-API fehlen: Cheftrainer,
+// Spielfeldbelag und Dach des Stadions.
+const CORE = 'https://sports.core.api.espn.com/v2/sports/football/leagues/nfl';
 
 // ESPN nutzt teils andere Kürzel als unsere team-media-DB
 const ABBR_MAP: Record<string, string> = { WSH: 'WAS', LA: 'LAR' };
@@ -593,4 +597,117 @@ export async function getTeamOverview(teamAbbr: string): Promise<TeamOverview | 
     last: played[played.length - 1] ?? null,
     upcoming: upcoming.slice(0, 5),
   };
+}
+
+/* ------------------------------ Team-Steckbrief --------------------------- */
+
+export type TeamProfile = {
+  /** Heimstadion mit Sitz und Bauart. */
+  venue: {
+    name: string;
+    location: string;
+    /** Naturrasen statt Kunstrasen. */
+    grass: boolean;
+    /** Geschlossenes oder schliessbares Dach. */
+    indoor: boolean;
+    capacity: number | null;
+  };
+  /** Cheftrainer; live von ESPN, weil er waehrend der Saison wechseln kann. */
+  coach: { name: string; experience: number | null; headshot: string | null } | null;
+  founded: number | null;
+  website: string;
+};
+
+/** Holt den Cheftrainer ueber die zwei Core-API-Ebenen (Liste -> Person). */
+async function getHeadCoach(espnTeamId: string): Promise<TeamProfile['coach']> {
+  const list = await getJSON(`${CORE}/teams/${espnTeamId}/coaches?lang=en&region=us`, 60 * 60 * 24);
+  const ref: string | undefined = list?.items?.[0]?.$ref;
+  if (!ref) return null;
+
+  // Die Referenzen kommen als http-Links; die Seite laeuft nur ueber https.
+  const coach = await getJSON(toHttps(ref) as string, 60 * 60 * 24);
+  const name = [coach?.firstName, coach?.lastName].filter(Boolean).join(' ').trim();
+  if (!name) return null;
+
+  const exp = Number(coach?.experience);
+  return {
+    name,
+    experience: Number.isFinite(exp) && exp > 0 ? exp : null,
+    headshot: toHttps(coach?.headshot?.href),
+  };
+}
+
+/**
+ * Steckbrief eines Teams: Stadion, Cheftrainer, Gruendung, Vereinsseite.
+ *
+ * Stadion, Kapazitaet, Sitz und Gruendungsjahr stehen in TEAM_FACTS, weil
+ * ESPN bei drei Teams noch das Stadion von vor 2020 fuehrt (siehe Kommentar
+ * dort). Der Cheftrainer kommt live und wird einen Tag lang gecacht.
+ */
+export async function getTeamProfile(teamAbbr: string): Promise<TeamProfile | null> {
+  const facts = TEAM_FACTS[teamAbbr];
+  if (!facts) return null;
+
+  const coach = await getHeadCoach(facts.espnId).catch(() => null);
+  return {
+    venue: {
+      name: facts.stadium,
+      location: facts.location,
+      grass: facts.grass,
+      indoor: facts.indoor,
+      capacity: facts.capacity,
+    },
+    coach,
+    founded: facts.founded,
+    website: facts.website,
+  };
+}
+
+/* --------------------------- Karriere eines Spielers ---------------------- */
+
+export type CareerSeason = {
+  season: number;
+  /** Team der Saison als ESPN-Slug, z. B. "kansas-city-chiefs". */
+  teamSlug: string | null;
+  /** Werte in derselben Reihenfolge wie die Labels der Kategorie. */
+  values: string[];
+};
+
+export type CareerCategory = {
+  /** "passing", "rushing", "receiving", "defensive", "scoring" */
+  name: string;
+  /** Spaltenkoepfe, z. B. ["GP", "CMP", "ATT", ...] */
+  labels: string[];
+  seasons: CareerSeason[];
+};
+
+/**
+ * Karrierewerte eines Spielers, Saison fuer Saison, direkt von ESPN.
+ *
+ * Die Antwort ist nach Kategorien gegliedert (Pass-, Lauf-, Fangspiel ...);
+ * welche davon gefuellt sind, haengt von der Position ab. Leere Kategorien
+ * werden hier schon aussortiert, damit die Oberflaeche nur zeigen muss, was
+ * wirklich Werte hat.
+ */
+export async function getAthleteCareer(athleteId: string): Promise<CareerCategory[]> {
+  const data = await getJSON(`${WEB}/athletes/${encodeURIComponent(athleteId)}/stats`, 60 * 60 * 6);
+  const cats = data?.categories ?? [];
+
+  return cats
+    .map((c: any): CareerCategory => {
+      const labels: string[] = Array.isArray(c?.labels) ? c.labels : [];
+      const seasons: CareerSeason[] = (c?.statistics ?? [])
+        .map((st: any): CareerSeason | null => {
+          const year = Number(st?.season?.year);
+          if (!Number.isFinite(year)) return null;
+          const values: string[] = Array.isArray(st?.stats) ? st.stats : [];
+          if (values.length === 0) return null;
+          return { season: year, teamSlug: st?.teamSlug ?? null, values };
+        })
+        .filter(Boolean)
+        .sort((a: CareerSeason, b: CareerSeason) => b.season - a.season);
+
+      return { name: c?.name ?? '', labels, seasons };
+    })
+    .filter((c: CareerCategory) => c.name && c.labels.length > 0 && c.seasons.length > 0);
 }

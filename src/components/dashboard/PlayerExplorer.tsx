@@ -18,6 +18,18 @@ export type ExplorerTeam = {
   logo: string | null;
 };
 
+type CareerSeason = { season: number; teamSlug: string | null; values: string[] };
+type CareerCategory = { name: string; labels: string[]; seasons: CareerSeason[] };
+
+/** ESPN benennt die Kategorien englisch; hier die deutschen Ueberschriften. */
+const CATEGORY_LABELS: Record<string, string> = {
+  passing: 'Passspiel',
+  rushing: 'Laufspiel',
+  receiving: 'Passempfang',
+  defensive: 'Defensive',
+  scoring: 'Punkte',
+};
+
 type RosterPlayer = {
   id: string;
   name: string;
@@ -46,6 +58,7 @@ export function PlayerExplorer({ teams }: { teams: ExplorerTeam[] }) {
   const [error, setError] = useState(false);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<RosterPlayer | null>(null);
+  const [career, setCareer] = useState<CareerCategory[] | null>(null);
 
   const team = teams.find((t) => t.id === teamId);
 
@@ -86,6 +99,22 @@ export function PlayerExplorer({ teams }: { teams: ExplorerTeam[] }) {
       cancelled = true;
     };
   }, [teamId]);
+
+  useEffect(() => {
+    if (!selected) {
+      setCareer(null);
+      return;
+    }
+    let cancelled = false;
+    setCareer(null);
+    fetch(`/api/player-career?id=${encodeURIComponent(selected.id)}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('career'))))
+      .then((d) => !cancelled && setCareer(d?.categories ?? []))
+      .catch(() => !cancelled && setCareer([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [selected]);
 
   const filtered = useMemo(() => {
     if (!roster) return [];
@@ -163,7 +192,7 @@ export function PlayerExplorer({ teams }: { teams: ExplorerTeam[] }) {
         </div>
 
         {/* Detailkarte */}
-        <div className="bg-black/30 rounded-lg border border-line p-5">
+        <div className="bg-black/30 rounded-lg border border-line p-5 min-w-0">
           {selected ? (
             <>
               <div className="flex items-center gap-4">
@@ -211,13 +240,15 @@ export function PlayerExplorer({ teams }: { teams: ExplorerTeam[] }) {
                 </div>
               )}
 
+              <Career categories={career} />
+
               <a
                 href={`https://www.espn.com/nfl/player/_/id/${selected.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-5 inline-flex items-center gap-2 text-sm text-primary hover:text-accent"
               >
-                Vollständige Stats auf ESPN <ExternalLink size={13} />
+                Alle Werte auf ESPN <ExternalLink size={13} />
               </a>
             </>
           ) : (
@@ -234,6 +265,67 @@ function Bio({ label, value }: { label: string; value: string }) {
     <div className="bg-black/40 rounded-lg p-3 border border-line">
       <div className="text-[10px] font-mono text-mute uppercase">{label}</div>
       <div className="font-display font-bold text-lg mt-1 truncate">{value}</div>
+    </div>
+  );
+}
+
+/**
+ * Karriere Saison fuer Saison, live von ESPN.
+ *
+ * Gezeigt wird die erste gefuellte Kategorie — bei einem Quarterback also das
+ * Passspiel, bei einem Linebacker die Defensive. Positionen ohne Statistik
+ * (Offensive Line) liefern gar nichts, dann bleibt der Block leer.
+ */
+function Career({ categories }: { categories: CareerCategory[] | null }) {
+  if (categories === null) {
+    return <p className="mt-5 text-sm text-mute animate-pulse">Lade Karrierewerte …</p>;
+  }
+  const cat = categories[0];
+  if (!cat) {
+    return (
+      <p className="mt-5 text-sm text-mute">
+        Für diese Position führt ESPN keine Einzelstatistik.
+      </p>
+    );
+  }
+
+  const seasons = cat.seasons.slice(0, 6);
+  return (
+    <div className="mt-5">
+      <div className="text-[10px] font-mono uppercase tracking-wider text-mute mb-2">
+        {CATEGORY_LABELS[cat.name] ?? cat.name} · letzte {seasons.length}{' '}
+        {seasons.length === 1 ? 'Saison' : 'Saisons'}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs border-collapse">
+          <thead>
+            <tr className="border-b border-line text-mute">
+              <th scope="col" className="text-left font-mono py-1.5 pr-3">
+                Jahr
+              </th>
+              {cat.labels.map((l) => (
+                <th key={l} scope="col" className="text-right font-mono py-1.5 px-1.5 whitespace-nowrap">
+                  {l}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {seasons.map((s) => (
+              <tr key={s.season} className="border-b border-line/50 last:border-0">
+                <th scope="row" className="text-left font-mono py-1.5 pr-3 font-normal">
+                  {s.season}
+                </th>
+                {cat.labels.map((l, i) => (
+                  <td key={l} className="text-right py-1.5 px-1.5 tabular-nums whitespace-nowrap">
+                    {s.values[i] ?? '—'}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
