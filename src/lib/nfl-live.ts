@@ -751,6 +751,9 @@ export async function getAthleteBio(
       const label = st?.shortDisplayName ?? st?.displayName;
       const value = st?.displayValue;
       if (!label || value == null) return null;
+      // Vor dem ersten Spieltag steht in jedem Feld "--"; eine Tabelle voller
+      // Striche ist keine Zusammenfassung.
+      if (!/\d/.test(String(value))) return null;
       const rank = Number(st?.rank);
       return { label, value: String(value), rank: Number.isFinite(rank) && rank > 0 ? rank : null };
     })
