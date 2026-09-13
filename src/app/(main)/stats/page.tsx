@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { AdvancedStatsTable } from '@/components/stats/AdvancedStatsTable';
 import { getAdvancedStats, type PositionGroup } from '@/lib/advanced-stats';
+import { PressureTable } from '@/components/stats/PressureTable';
+import { getPressureLeaders } from '@/lib/pfr-advanced';
 
 export const metadata = {
   title: 'Advanced Stats — Passer Rating, CPOE, Separation & Next Gen Stats',
@@ -26,7 +28,10 @@ export default async function StatsPage({
     ? (searchParams.pos as PositionGroup)
     : 'QB';
 
-  const { rows, season } = await getAdvancedStats(group);
+  const [{ rows, season }, pressure] = await Promise.all([
+    getAdvancedStats(group),
+    getPressureLeaders(20),
+  ]);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-16">
@@ -74,6 +79,28 @@ export default async function StatsPage({
         <AdvancedStatsTable group={group} rows={rows} season={season} />
       )}
 
+      {/* Druck und Wurfqualitaet (Pro-Football-Reference ueber nflverse) */}
+      {pressure.length > 0 && (
+        <section className="mt-14">
+          <div className="flex items-end justify-between gap-4 flex-wrap mb-4">
+            <div>
+              <span className="chip">Pro Football Reference</span>
+              <h2 className="font-display text-3xl font-bold mt-3">
+                Unter <span className="grad-text italic">Druck</span>.
+              </h2>
+              <p className="text-mute mt-2 max-w-2xl">
+                Next Gen Stats messen, wie schnell ein Quarterback wirft. Diese Zahlen zeigen, unter
+                welchen Bedingungen er das tut: wie oft die Defense durchkam, wie lange die Pocket
+                hielt und wie viele Bälle überhaupt fangbar waren. Sortiert nach Druckrate, ab 150
+                Würfen.
+              </p>
+            </div>
+            <span className="text-xs font-mono text-mute">Saison {pressure[0].season}</span>
+          </div>
+          <PressureTable rows={pressure} />
+        </section>
+      )}
+
       {/* Ehrlichkeit zur Datenlage */}
       <div className="card p-6 mt-10 max-w-3xl">
         <h2 className="font-display text-lg font-bold">Woher die Zahlen kommen</h2>
@@ -91,9 +118,23 @@ export default async function StatsPage({
           Rechnung gegen die Werte der Liga.
         </p>
         <p className="text-sm text-mute mt-3 leading-relaxed">
+          Druckrate, Blitzes, Pocket-Zeit und Wurfqualität chartet{' '}
+          <a
+            href="https://www.pro-football-reference.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            Pro Football Reference
+          </a>{' '}
+          von Hand; nflverse spiegelt die Tabellen, deshalb stehen sie hier ohne Scraping und ohne
+          Lizenzkosten. PFR trägt sie erst im Saisonverlauf nach — im September steht deshalb noch
+          die Vorsaison in der Tabelle.
+        </p>
+        <p className="text-sm text-mute mt-3 leading-relaxed">
           <strong className="text-ink">Nicht dabei:</strong> Pass Block Win Rate, Pass Rush Win
-          Rate, Pressure Rate, Burn Rate und Route Run Percentage. Diese Kennzahlen entstehen durch
-          manuelles Charting bei ESPN und PFF, sind kostenpflichtig lizenziert und lassen sich aus
+          Rate, Burn Rate und Route Run Percentage. Diese Kennzahlen entstehen durch manuelles
+          Charting bei ESPN und PFF, sind kostenpflichtig lizenziert und lassen sich aus
           Tracking-Daten nicht nachbauen. Lieber gar kein Wert als ein erfundener.
         </p>
       </div>
