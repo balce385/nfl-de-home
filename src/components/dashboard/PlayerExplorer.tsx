@@ -346,7 +346,11 @@ function Contract({ c }: { c: NonNullable<PlayerExtras['contract']> }) {
         <Bio
           label="Gesamtwert"
           value={musd(c.valueMusd)}
-          hint={c.years && c.yearSigned ? `${c.years} Jahre, unterschrieben ${c.yearSigned}` : undefined}
+          hint={
+            c.years && c.yearSigned
+              ? `${c.years} ${c.years === 1 ? 'Jahr' : 'Jahre'}, unterschrieben ${c.yearSigned}`
+              : undefined
+          }
         />
         <Bio
           label="Pro Jahr"
