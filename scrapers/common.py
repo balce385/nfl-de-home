@@ -4,6 +4,7 @@ from datetime import date
 from typing import Any
 
 import httpx
+from postgrest.exceptions import APIError
 from supabase import create_client, Client
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 from dotenv import load_dotenv
@@ -116,6 +117,28 @@ def dedupe_by(rows: list[dict[str, Any]], keys: str) -> list[dict[str, Any]]:
     return list(unique.values())
 
 
+def _is_retryable_db(exc: BaseException) -> bool:
+    # Supabase antwortet unter Last gelegentlich mit 504 Gateway Timeout
+    # (Actions-Lauf vom 2026-09-13: Sleeper-Batch abgebrochen, lokal kurz
+    # danach in 9 s durch). `code` ist mal ein HTTP-Status (504), mal ein
+    # Postgres-SQLSTATE ("57014" Statement-Timeout, "23514" Constraint).
+    # Beginnt er mit 5, ist es Last oder Timeout; alles andere — verletzte
+    # Constraints, PGRST-Schemafehler — behebt ein zweiter Versuch nicht.
+    if isinstance(exc, APIError):
+        return str(exc.code).startswith("5")
+    return isinstance(exc, (httpx.TransportError, httpx.TimeoutException))
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(min=5, max=60),
+    retry=retry_if_exception(_is_retryable_db),
+    reraise=True,
+)
+def _execute(query):
+    return query.execute()
+
+
 def upsert(table: str, rows: list[dict[str, Any]], on_conflict: str | None = None):
     if not rows:
         return
@@ -123,7 +146,7 @@ def upsert(table: str, rows: list[dict[str, Any]], on_conflict: str | None = Non
     q = sb.table(table)
     if on_conflict:
         rows = dedupe_by(rows, on_conflict)
-        q.upsert(rows, on_conflict=on_conflict).execute()
+        _execute(q.upsert(rows, on_conflict=on_conflict))
     else:
-        q.upsert(rows).execute()
+        _execute(q.upsert(rows))
     print(f"  ↳ upserted {len(rows)} rows into {table}")

@@ -1,6 +1,9 @@
 name: NFL Data + News Scrapers
 
 on:
+  # Seit 2026-08-24 loeste der Zeitplan nicht mehr aus, obwohl der Workflow
+  # "active" war. Ohne geplanten Lauf veralten alle Daten still — nach einer
+  # Pause darum unter Actions pruefen, ob "schedule"-Laeufe erscheinen.
   schedule:
     # Stuendlich: nur News (niedriges Datenvolumen, schnell, immer frisch)
     - cron: '7 * * * *'
