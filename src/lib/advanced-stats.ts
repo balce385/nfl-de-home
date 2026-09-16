@@ -94,6 +94,9 @@ export async function getTopPasser(): Promise<TopPasser | null> {
     )
     .eq('week', 0)
     .eq('position', 'QB')
+    // Ohne Mindestvolumen kürt die frisch begonnene Saison einen Passing-Leader
+    // aus zwei Spieltagen — siehe getAdvancedStats.
+    .gte(MIN_VOLUME.QB.column, MIN_VOLUME.QB.value)
     .order('season', { ascending: false })
     .order('pass_yards', { ascending: false })
     .limit(1);
@@ -127,12 +130,22 @@ export async function getAdvancedStats(group: PositionGroup): Promise<{
   season: number | null;
 }> {
   const supabase = createClient();
+  const min = MIN_VOLUME[group];
 
-  // Neueste Saison ermitteln, für die überhaupt Werte vorliegen.
+  // Neueste Saison ermitteln, in der diese Positionsgruppe das Mindestvolumen
+  // auch erreicht — nicht bloß die neueste, für die irgendein Wert existiert.
+  //
+  // Der Unterschied ist im September der zwischen voller und leerer Tabelle:
+  // Dann stehen für die laufende Saison erst ein paar Dutzend Zeilen in der
+  // Datenbank, von denen noch kein Quarterback 100 Würfe hat. Ohne den
+  // Volumenfilter schon hier gewinnt diese Saison die Abfrage, und die
+  // vollständige Vorsaison daneben wird nie gezeigt.
   const { data: seasonRow } = await supabase
     .from('player_advanced')
     .select('season')
     .eq('week', 0)
+    .in('position', GROUP_POSITIONS[group])
+    .gte(min.column, min.value)
     .order('season', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -140,7 +153,6 @@ export async function getAdvancedStats(group: PositionGroup): Promise<{
   const season = seasonRow?.season ?? null;
   if (!season) return { rows: [], season: null };
 
-  const min = MIN_VOLUME[group];
   const { data, error } = await supabase
     .from('player_advanced')
     .select(

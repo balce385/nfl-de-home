@@ -213,6 +213,152 @@ export const METRICS: Record<string, MetricInfo> = {
     digits: 2,
     unit: ' yd',
   },
+
+  /* ---- Receiving, gechartet von Pro Football Reference ---- */
+  adot: {
+    key: 'adot',
+    label: 'ADoT',
+    hint: 'Average Depth of Target: wie viele Yards hinter der Anspiellinie der Ball im Schnitt auf diesen Spieler geworfen wird. Hoher Wert heißt tiefe Route, nicht automatisch besser.',
+    digits: 1,
+    unit: ' yd',
+  },
+  ybc_r: {
+    key: 'ybc_r',
+    label: 'Yards vor Kontakt',
+    hint: 'Yards je Fang, die der Ball in der Luft zurücklegt — der Anteil, den Route und Wurf erarbeiten.',
+    digits: 1,
+    unit: ' yd',
+  },
+  yac_r: {
+    key: 'yac_r',
+    label: 'Yards nach Fang',
+    hint: 'Yards je Fang, die der Spieler nach dem Fang selbst holt.',
+    digits: 1,
+    unit: ' yd',
+  },
+  rec_br: {
+    key: 'rec_br',
+    label: 'Fänge je Tackle-Bruch',
+    hint: 'Wie viele Fänge es braucht, bis dieser Spieler einen Tackle bricht. Weniger heißt schwerer zu stoppen.',
+    digits: 1,
+    lowerIsBetter: true,
+  },
+  drop_pct: {
+    key: 'drop_pct',
+    label: 'Drop-Quote',
+    hint: 'Anteil fangbarer Bälle, die der Spieler fallen lässt.',
+    digits: 1,
+    unit: ' %',
+    lowerIsBetter: true,
+  },
+  tgt_rating: {
+    key: 'tgt_rating',
+    label: 'Rating bei Anspiel',
+    hint: 'Passer Rating des Quarterbacks, wenn er diesen Spieler anwirft. 158,3 ist der perfekte Wert.',
+    digits: 1,
+  },
+
+  /* ---- Laufspiel, gechartet von Pro Football Reference ---- */
+  ybc_att: {
+    key: 'ybc_att',
+    label: 'Yards vor Kontakt',
+    hint: 'Laufyards je Versuch bis zum ersten Kontakt — im Wesentlichen die Leistung der Offensive Line.',
+    digits: 2,
+    unit: ' yd',
+  },
+  yac_att: {
+    key: 'yac_att',
+    label: 'Yards nach Kontakt',
+    hint: 'Laufyards je Versuch nach dem ersten Kontakt — das, was der Running Back selbst erzwingt.',
+    digits: 2,
+    unit: ' yd',
+  },
+  att_br: {
+    key: 'att_br',
+    label: 'Läufe je Tackle-Bruch',
+    hint: 'Wie viele Läufe es braucht, bis dieser Spieler einen Tackle bricht. Weniger heißt schwerer zu stoppen.',
+    digits: 1,
+    lowerIsBetter: true,
+  },
+
+  /* ---- Defense, gechartet von Pro Football Reference ---- */
+  cmp_pct_allowed: {
+    key: 'cmp_pct_allowed',
+    label: 'Fangquote zugelassen',
+    hint: 'Anteil der Pässe in seine Deckung, die ankommen.',
+    digits: 1,
+    unit: ' %',
+    lowerIsBetter: true,
+  },
+  yds_per_tgt: {
+    key: 'yds_per_tgt',
+    label: 'Yards je Anspiel',
+    hint: 'Raumgewinn je Pass in seine Deckung.',
+    digits: 1,
+    unit: ' yd',
+    lowerIsBetter: true,
+  },
+  rating_allowed: {
+    key: 'rating_allowed',
+    label: 'Rating zugelassen',
+    hint: 'Passer Rating der Quarterbacks, wenn sie in seine Deckung werfen. Niedrig ist gut.',
+    digits: 1,
+    lowerIsBetter: true,
+  },
+  dadot: {
+    key: 'dadot',
+    label: 'Tiefe der Anspiele',
+    hint: 'Wie tief gegen ihn geworfen wird. Cornerbacks außen sehen tiefere Bälle als Linebacker.',
+    digits: 1,
+    unit: ' yd',
+  },
+  missed_tackle_pct: {
+    key: 'missed_tackle_pct',
+    label: 'Verpasste Tackles',
+    hint: 'Anteil der Tackle-Versuche, die danebengehen.',
+    digits: 1,
+    unit: ' %',
+    lowerIsBetter: true,
+  },
+
+  /* ---- ESPN Total QBR ---- */
+  qbr: {
+    key: 'qbr',
+    label: 'Total QBR',
+    hint: 'ESPNs Gesamtwert für Quarterbacks auf einer Skala von 0 bis 100, gewichtet nach Spielsituation. 50 ist Liga-Durchschnitt.',
+    digits: 1,
+  },
+  pts_added: {
+    key: 'pts_added',
+    label: 'Punkte beigetragen',
+    hint: 'Punkte, die der Quarterback gegenüber einem durchschnittlichen Ersatzmann zusätzlich einbringt.',
+    digits: 1,
+  },
+  epa_total: {
+    key: 'epa_total',
+    label: 'EPA gesamt',
+    hint: 'Summe der Expected Points Added über alle seine Spielzüge.',
+    digits: 1,
+  },
+  epa_pass: {
+    key: 'epa_pass',
+    label: 'EPA Pass',
+    hint: 'Anteil der EPA, der aus dem Passspiel stammt.',
+    digits: 1,
+  },
+  epa_run: {
+    key: 'epa_run',
+    label: 'EPA Lauf',
+    hint: 'Anteil der EPA, den der Quarterback mit den eigenen Beinen holt.',
+    digits: 1,
+  },
+  epa_sack: {
+    key: 'epa_sack',
+    label: 'EPA Sacks',
+    hint: 'Punktverlust durch genommene Sacks. Immer negativ oder null.',
+    digits: 1,
+    lowerIsBetter: true,
+  },
 };
 
 /** Formatiert einen Messwert deutsch, inklusive Einheit. */
