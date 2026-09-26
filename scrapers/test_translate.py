@@ -17,6 +17,7 @@ class _Echo:
 def test_gesperrtes_backend_wird_nur_einmal_gefragt(monkeypatch):
     google = _Blocked()
     monkeypatch.setattr(translate, "_google", google)
+    monkeypatch.setattr(translate, "_libre", None)
     monkeypatch.setattr(translate, "_mymem", _Echo())
     monkeypatch.setattr(translate, "_blocked", set())
     monkeypatch.setattr(translate, "_MIN_INTERVAL", 0)

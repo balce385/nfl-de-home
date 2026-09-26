@@ -2,16 +2,20 @@
 Auto-Uebersetzung EN -> DE mit Fallback-Chain.
 
 Backends in dieser Reihenfolge:
-  1. Google Translator (deep-translator, Free)
-  2. MyMemory          (deep-translator, Free, 1k Worte/Tag)
-  3. Original-Text                              wenn beide ausfallen
+  1. Google Translator (deep-translator, Free; drosselt Server-IPs)
+  2. LibreTranslate    (eigene Instanz, nur wenn LIBRETRANSLATE_URL gesetzt)
+  3. MyMemory          (deep-translator, Free, 1k Worte/Tag)
+  4. Original-Text                              wenn alle ausfallen
 
 NFL-Begriffs-Glossar: Begriffe die NICHT uebersetzt werden,
 weil deutsche NFL-Fans sie als Lehnwoerter nutzen.
 """
-from functools import lru_cache
+import os
 import re
 import time
+from functools import lru_cache
+
+import httpx
 
 # NFL-Lehnwoerter im Deutschen
 NFL_TERMS = [
@@ -71,6 +75,27 @@ except Exception as e:
     print(f"  [warn] MyMemoryTranslator nicht verfuegbar: {e}")
 
 
+class _LibreTranslate:
+    """Eigene LibreTranslate-Instanz auf dem VPS (deploy-stack, Dienst libretranslate).
+
+    Kein Tageslimit und keine IP-Sperre, uebersetzt aber holpriger als Google —
+    deshalb nur Rueckfallebene, wenn Google die Server-IP drosselt.
+    """
+
+    def __init__(self, url: str):
+        self.url = url.rstrip("/") + "/translate"
+
+    def translate(self, text: str) -> str:
+        r = httpx.post(self.url, json={"q": text, "source": "en", "target": "de",
+                                       "format": "text"}, timeout=60)
+        r.raise_for_status()
+        return r.json()["translatedText"]
+
+
+_LIBRE_URL = os.getenv("LIBRETRANSLATE_URL")
+_libre = _LibreTranslate(_LIBRE_URL) if _LIBRE_URL else None
+
+
 _last_call = 0.0
 # 0.4 s liess Google die VPS-IP nach ~170 Anfragen am Stueck sperren.
 _MIN_INTERVAL = 1.0
@@ -97,7 +122,8 @@ def translate_to_de(text):
 
     protected, ph = _protect(text)
 
-    for name, backend in (("google", _google), ("mymemory", _mymem)):
+    backends = (("google", _google), ("libretranslate", _libre), ("mymemory", _mymem))
+    for name, backend in backends:
         if not backend or name in _blocked:
             continue
         try:

@@ -14,6 +14,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from .common import upsert, supabase_admin
 from .translate import translate_to_de
+from . import indexnow
 
 # ============================================================
 # Feed-Definition: (url, category, source, lang, team_id_hint)
@@ -211,7 +212,8 @@ def run():
     for s, n in new_per_source.items():
         print(f"       {s}: {n}")
 
-    _retranslate()
+    retranslated = _retranslate()
+    indexnow.submit([f"{indexnow.SITE}/magazin/{r['slug']}" for r in rows] + retranslated)
 
 
 # Google drosselt die feste VPS-IP bei vielen Anfragen am Stueck (am 26.09.2026
@@ -221,12 +223,13 @@ RETRANSLATE_DAYS = 3
 RETRANSLATE_LIMIT = 30
 
 
-def _retranslate():
+def _retranslate() -> list[str]:
+    """Uebersetzt offene Artikel nach; liefert ihre URLs fuer IndexNow."""
     sb = supabase_admin()
     since = (datetime.now(timezone.utc) - timedelta(days=RETRANSLATE_DAYS)).isoformat()
     pending = (
         sb.table("articles")
-        .select("id, title, body_md")
+        .select("id, slug, title, body_md")
         .eq("translated", False)
         .gte("published_at", since)
         .order("published_at", desc=True)
@@ -235,7 +238,7 @@ def _retranslate():
         .data
         or []
     )
-    done = 0
+    done: list[str] = []
     for a in pending:
         title_de = translate_to_de(a["title"])
         if not title_de or title_de == a["title"]:
@@ -251,8 +254,9 @@ def _retranslate():
             "original_title": a["title"],
             "translated": True,
         }).eq("id", a["id"]).execute()
-        done += 1
-    print(f"  nachuebersetzt: {done} von {len(pending)} offenen")
+        done.append(f"{indexnow.SITE}/magazin/{a['slug']}")
+    print(f"  nachuebersetzt: {len(done)} von {len(pending)} offenen")
+    return done
 
 
 if __name__ == "__main__":
