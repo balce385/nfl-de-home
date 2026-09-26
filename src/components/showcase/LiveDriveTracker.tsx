@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Radio, RefreshCw } from 'lucide-react';
 import { fieldPercent, downText } from '@/lib/drive-situation';
+import { isLiveOrDue } from '@/lib/live-poll';
 
 type Side = {
   code: string;
@@ -85,16 +86,20 @@ export function LiveDriveTracker({ initialGames }: { initialGames: Situation[] }
     load(selected);
   }, [selected, load]);
 
-  // Nur nachladen, solange das gewaehlte Spiel wirklich laeuft.
+  // Nur nachladen, solange das gewaehlte Spiel laeuft oder laut Kickoff laufen
+  // muesste — die Pruefung sitzt im Takt, sonst verpasst eine vor dem Kickoff
+  // geladene Seite den Spielbeginn.
   useEffect(() => {
     if (timer.current) clearInterval(timer.current);
-    if (game?.state === 'in') {
-      timer.current = setInterval(() => load(selected), POLL_MS);
+    if (game && game.state !== 'post') {
+      timer.current = setInterval(() => {
+        if (!document.hidden && isLiveOrDue(game, Date.now())) load(selected);
+      }, POLL_MS);
     }
     return () => {
       if (timer.current) clearInterval(timer.current);
     };
-  }, [game?.state, selected, load]);
+  }, [game, selected, load]);
 
   if (!game) {
     return (
