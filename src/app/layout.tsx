@@ -77,6 +77,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="de"
       className={`${playfair.variable} ${manrope.variable} ${jetbrains.variable}`}
     >
+      <head>
+        {/* Hier statt in `metadata.alternates`: Seiten mit eigenem Canonical
+            überschreiben `alternates` komplett, der Feed-Link ginge verloren. */}
+        <link rel="alternate" type="application/rss+xml" title="NFL-DE-Hub News" href="/feed.xml" />
+      </head>
       <body className="font-body bg-bg text-ink antialiased">
         <script
           type="application/ld+json"

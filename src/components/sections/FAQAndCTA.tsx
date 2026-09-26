@@ -4,11 +4,11 @@ import { ArrowRight } from 'lucide-react';
 const faqs = [
   {
     q: 'Woher stammen die Daten?',
-    a: 'Wir aggregieren aus offenen Quellen: nflverse (Play-by-Play, EPA, CPOE), Sleeper API (Spieler & Verletzungen), Pro Football Reference (historische Stats), ESPN (Spielplan, Live-Scores), NFL.com (News, automatisch ins Deutsche übersetzt) und TheSportsDB (Team-Logos). Updates täglich per Cron.',
+    a: 'Aus offenen Quellen: nflverse (Play-by-Play, EPA, CPOE, Next Gen Stats und Kennzahlen von Pro Football Reference), Sleeper (Spieler & Verletzungen), ESPN (Spielplan, Live-Scores, Kader) und die Nachrichten-Feeds von ESPN, ProFootballTalk, CBS Sports, Yahoo und weiteren, automatisch ins Deutsche übersetzt. News werden stündlich aktualisiert, alles andere täglich.',
   },
   {
     q: 'Ist der Hub DSGVO-konform?',
-    a: 'Ja. Hosting in der EU (Vercel/Frankfurt), Auth via Supabase mit verschlüsselter Speicherung. Tracking nur nach Opt-in.',
+    a: 'Ja. Die Seite läuft auf einem Server der netcup GmbH in Deutschland, Konten und Chat liegen bei Supabase in der EU (Irland). Es gibt kein Tracking und keine Werbe-Cookies.',
   },
   {
     q: 'Was kostet der Hub?',
@@ -16,7 +16,7 @@ const faqs = [
   },
   {
     q: 'Gibt es eine Mobile-App?',
-    a: 'Aktuell als Progressive Web App (PWA) — installierbar aus dem Browser. Native iOS/Android-Apps sind für Q4 2026 geplant.',
+    a: 'Noch nicht. Die Seite ist fürs Handy gebaut; über „Zum Startbildschirm hinzufügen“ im Browser liegt sie wie eine App auf dem Homescreen.',
   },
 ];
 
