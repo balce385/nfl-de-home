@@ -13,6 +13,9 @@ dependencies = [
     "deep-translator>=1.11.4",
     # Vertraege gibt es bei nflverse nur noch als Parquet.
     "pyarrow>=17.0.0",
+    # SEO-Bot: Search-Console-Auswertung (Service-Konto seo-bot@nfl-fan-app-seo).
+    "google-api-python-client>=2.100.0",
+    "google-auth>=2.23.0",
 ]
 
 # Dieses Projekt liefert kein eigenes Paket aus, es buendelt nur die

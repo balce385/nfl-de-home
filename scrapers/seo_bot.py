@@ -183,10 +183,11 @@ def gsc_opportunities() -> list[dict]:
     Braucht ein Service-Konto mit Lesezugriff auf die Property (GSC_CREDENTIALS =
     Pfad zur JSON-Datei). Ohne Zugang wird der Schritt uebersprungen.
     """
-    cred = os.getenv("GSC_CREDENTIALS")
+    # Standardort: im SEO-Volume, dann reicht es, die Datei dorthin zu legen.
+    cred = os.getenv("GSC_CREDENTIALS") or str(SEO_DIR / "gsc.json")
     if not cred or not Path(cred).exists():
         return []
-    from google.oauth2 import service_account  # nur mit Zugang installiert
+    from google.oauth2 import service_account
     from googleapiclient.discovery import build
 
     creds = service_account.Credentials.from_service_account_file(
