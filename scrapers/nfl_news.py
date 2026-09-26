@@ -183,7 +183,9 @@ def run():
                     "category": category,
                     "source": source,
                     "source_url": entry.get("link"),
-                    "language": "de",
+                    # Scheitert die Uebersetzung (Google drosselt Server-IPs),
+                    # bleibt der Text englisch — dann auch so kennzeichnen.
+                    "language": "de" if translated or lang == "de" else "en",
                     "original_title": title_orig if translated else None,
                     "translated": translated,
                     "team_id": team_id,

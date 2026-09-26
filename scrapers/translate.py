@@ -73,6 +73,7 @@ except Exception as e:
 
 _last_call = 0.0
 _MIN_INTERVAL = 0.4
+_blocked: set[str] = set()
 
 
 def _ratelimit():
@@ -95,22 +96,21 @@ def translate_to_de(text):
 
     protected, ph = _protect(text)
 
-    if _google:
+    for name, backend in (("google", _google), ("mymemory", _mymem)):
+        if not backend or name in _blocked:
+            continue
         try:
             _ratelimit()
-            out = _google.translate(protected)
+            out = backend.translate(protected)
             if out:
                 return _restore(out, ph)
         except Exception as e:
-            print(f"  [warn] google: {str(e)[:60]}")
-
-    if _mymem:
-        try:
-            _ratelimit()
-            out = _mymem.translate(protected)
-            if out:
-                return _restore(out, ph)
-        except Exception as e:
-            print(f"  [warn] mymemory: {str(e)[:60]}")
+            msg = str(e)
+            print(f"  [warn] {name}: {msg[:60]}")
+            # Gesperrt bleibt gesperrt: Nach 13 Tagen Rueckstand lief der Lauf
+            # sonst in Hunderte identische "too many requests"-Fehler.
+            if "too many requests" in msg.lower() or "quota" in msg.lower():
+                print(f"  [warn] {name}: fuer diesen Lauf abgeschaltet")
+                _blocked.add(name)
 
     return text

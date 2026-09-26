@@ -62,6 +62,8 @@ export default async function ArticlePage({
   }
 
   const a = article;
+  // Uebersetzung gescheitert: Text ist englisch, fuer Screenreader und Suchmaschinen markieren.
+  const lang = a.language === 'en' ? 'en' : undefined;
   const published = a.published_at
     ? new Date(a.published_at).toLocaleDateString('de-DE', {
         year: 'numeric',
@@ -105,16 +107,17 @@ export default async function ArticlePage({
             DE-Übersetzung
           </span>
         )}
+        {lang && <span className="chip">englisch</span>}
         {a.source && <span>· {a.source}</span>}
         {published && <span>· {published}</span>}
       </div>
 
-      <h1 className="font-display text-4xl lg:text-5xl font-bold leading-tight mb-6">
+      <h1 lang={lang} className="font-display text-4xl lg:text-5xl font-bold leading-tight mb-6">
         {a.title}
       </h1>
 
       {a.excerpt && (
-        <p className="text-lg text-mute leading-relaxed mb-8 italic font-display">
+        <p lang={lang} className="text-lg text-mute leading-relaxed mb-8 italic font-display">
           {a.excerpt}
         </p>
       )}
@@ -133,7 +136,7 @@ export default async function ArticlePage({
       )}
 
       {a.body_md && (
-        <div className="prose prose-invert max-w-none text-ink leading-relaxed whitespace-pre-wrap">
+        <div lang={lang} className="prose prose-invert max-w-none text-ink leading-relaxed whitespace-pre-wrap">
           {a.body_md}
         </div>
       )}
