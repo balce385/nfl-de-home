@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { siteOwner } from '@/data/site-owner';
+import { withSeo } from '@/lib/seo';
 
-export const metadata = {
+export const metadata = withSeo({
   title: 'Über dieses Projekt',
   description:
     'Wer hinter dem NFL-DE-Hub steckt, woher die Daten kommen und was das Projekt ausdrücklich nicht ist.',
-  alternates: { canonical: '/about' },
-};
+  path: '/about',
+});
 
 export default function AboutPage() {
   return (

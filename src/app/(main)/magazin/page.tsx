@@ -2,13 +2,14 @@ import { ArticleCard } from '@/components/ui/ArticleCard';
 import { TeamNewsFeed } from '@/components/magazin/TeamNewsFeed';
 import { articles } from '@/lib/mock-data';
 import { getAllTeams } from '@/lib/nfl-live';
+import { withSeo } from '@/lib/seo';
 
-export const metadata = {
+export const metadata = withSeo({
   title: 'Magazin — NFL-Analysen, News und Fantasy auf Deutsch',
   description:
     'Tiefenanalysen, Spieltagsberichte, Fantasy-Tipps und Hintergründe — von der Redaktion des NFL-DE-Hub.',
-  alternates: { canonical: '/magazin' },
-};
+  path: '/magazin',
+});
 
 export const revalidate = 300;
 

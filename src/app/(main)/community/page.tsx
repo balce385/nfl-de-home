@@ -1,13 +1,14 @@
 import { createClient } from '@/lib/supabase/server';
 import { getCommunityStats } from '@/lib/community';
 import { ChatRoom } from './ChatRoom';
+import { withSeo } from '@/lib/seo';
 
-export const metadata = {
+export const metadata = withSeo({
   title: 'Community — der NFL-Treffpunkt für DACH',
   description:
     'Diskutiere Spieltage, Trades und Fantasy-Entscheidungen mit NFL-Fans aus Deutschland, Österreich und der Schweiz.',
-  alternates: { canonical: '/community' },
-};
+  path: '/community',
+});
 
 export default async function CommunityPage() {
   // Kein Login mehr nötig — Gäste können mitlesen.

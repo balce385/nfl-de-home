@@ -4,13 +4,14 @@ import { TeamMediaExplorer } from '@/components/showcase/TeamMediaExplorer';
 import { TeamNewsFeed } from '@/components/magazin/TeamNewsFeed';
 import { getAllTeams, getScoreboard, getStandings, getGameSituations } from '@/lib/nfl-live';
 import { fullArticles } from '@/data/articles';
+import { withSeo } from '@/lib/seo';
 
-export const metadata = {
+export const metadata = withSeo({
   title: 'News — Live-Daten, Standings & Team-Media',
   description:
     'Live-Scoreboard, Power Rankings, Beat Writers und aktuelle News für alle 32 NFL-Teams — direkt von der ESPN-API.',
-  alternates: { canonical: '/news' },
-};
+  path: '/news',
+});
 
 export const revalidate = 300;
 

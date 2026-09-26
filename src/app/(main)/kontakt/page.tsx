@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { Mail, Bug, Shield } from 'lucide-react';
 import { siteOwner } from '@/data/site-owner';
+import { withSeo } from '@/lib/seo';
 
-export const metadata = {
+export const metadata = withSeo({
   title: 'Kontakt',
   description: 'Fehler melden, Fragen stellen oder Auskunft nach DSGVO anfordern.',
-  alternates: { canonical: '/kontakt' },
-};
+  path: '/kontakt',
+});
 
 const wege = [
   {

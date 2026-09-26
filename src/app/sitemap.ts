@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { articles } from '@/data/articles';
+import { TEAM_FACTS } from '@/data/team-facts';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nfl-fan-app.de';
 
@@ -8,13 +9,21 @@ export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
-  const routes = ['', '/news', '/stats', '/playbook', '/magazin', '/community', '/about', '/api-docs', '/kontakt'];
+  const routes = ['', '/news', '/teams', '/stats', '/playbook', '/magazin', '/community', '/about', '/api-docs', '/kontakt'];
 
   const staticEntries: MetadataRoute.Sitemap = routes.map((path) => ({
     url: `${SITE_URL}${path}`,
     lastModified: now,
     changeFrequency: path === '' ? 'daily' : 'weekly',
     priority: path === '' ? 1.0 : 0.7,
+  }));
+
+  // Team-Seiten: Kader und Spielplan aendern sich waehrend der Saison woechentlich.
+  const teamEntries: MetadataRoute.Sitemap = Object.keys(TEAM_FACTS).map((t) => ({
+    url: `${SITE_URL}/teams/${t.toLowerCase()}`,
+    lastModified: now,
+    changeFrequency: 'daily',
+    priority: 0.8,
   }));
 
   const bySlug = new Map<string, Date>();
@@ -43,5 +52,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  return [...staticEntries, ...articleEntries];
+  return [...staticEntries, ...teamEntries, ...articleEntries];
 }

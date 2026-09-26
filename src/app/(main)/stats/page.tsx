@@ -12,13 +12,14 @@ import {
   type AdvPlayerRow,
 } from '@/lib/pfr-advanced';
 import { getAllTeams } from '@/lib/nfl-live';
+import { withSeo } from '@/lib/seo';
 
-export const metadata = {
+export const metadata = withSeo({
   title: 'Advanced Stats — QBR, Druckrate, ADoT, Separation & Next Gen Stats',
   description:
     'Total QBR, Druckrate, ADoT, Yards nach dem Kontakt, gebrochene Tackles, zugelassenes Passer Rating, Separation und 8+ in der Box — Advanced Stats für Quarterbacks, Receiver, Tight Ends, Running Backs und die Defense, auf Deutsch erklärt.',
-  alternates: { canonical: '/stats' },
-};
+  path: '/stats',
+});
 
 export const revalidate = 900;
 

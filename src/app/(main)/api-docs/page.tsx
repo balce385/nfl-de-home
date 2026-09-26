@@ -1,11 +1,12 @@
 import Link from 'next/link';
+import { withSeo } from '@/lib/seo';
 
-export const metadata = {
+export const metadata = withSeo({
   title: 'API',
   description:
     'Die öffentlichen JSON-Endpunkte des NFL-DE-Hub: Team-Übersicht, News, Kader, Spielsituation.',
-  alternates: { canonical: '/api-docs' },
-};
+  path: '/api-docs',
+});
 
 /**
  * Ehrliche API-Dokumentation: nur die Endpunkte, die es wirklich gibt.

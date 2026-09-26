@@ -1,12 +1,13 @@
 import { PlayDesigner } from '@/components/playbook/PlayDesigner';
 import { getAllTeams } from '@/lib/nfl-live';
+import { withSeo } from '@/lib/seo';
 
-export const metadata = {
+export const metadata = withSeo({
   title: 'Playbook — NFL-Spielzüge verstehen und simulieren',
   description:
     'Echte NFL-Konzepte wie Mesh, Smash oder Wide Zone per Klick laden, die Coverage wählen und zusehen, wie der Spielzug gegen eine reagierende Defense läuft — mit Erklärung, warum er funktioniert.',
-  alternates: { canonical: '/playbook' },
-};
+  path: '/playbook',
+});
 
 export const revalidate = 3600;
 
