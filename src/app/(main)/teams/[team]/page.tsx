@@ -30,10 +30,13 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: { team: string } }) {
   const abbr = params.team.toUpperCase();
   const o = await getTeamOverview(abbr);
-  if (!o) return {};
+  // notFound() hier statt erst im Seiteninhalt: sonst kommt die Fehlerseite mit
+  // HTTP 200 und dem Titel der Startseite an (so geschehen bei den Rams).
+  if (!o) notFound();
   const standing = o.standingSummary ? `, ${standingDe(o.standingSummary)}` : '';
   return withSeo({
-    title: `${o.name}: Kader, Spielplan & News auf Deutsch`,
+    // Unter 60 Zeichen samt Marke, damit Google nichts abschneidet.
+    title: `${o.name}: Kader, Spielplan & News`,
     description: `${o.name} auf Deutsch: Bilanz ${o.record}${standing}, nächstes Spiel, kompletter Kader mit Trikotnummern, Head Coach, Stadion und aktuelle News.`,
     path: `/teams/${params.team}`,
     image: o.logo,

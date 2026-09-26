@@ -29,6 +29,14 @@ export const normalizeAbbr = (abbr: string) => ABBR_MAP[abbr] ?? abbr;
 const ABBR_MAP_REVERSE: Record<string, string> = { WAS: 'WSH', LAR: 'LA' };
 export const denormalizeAbbr = (abbr: string) => ABBR_MAP_REVERSE[abbr] ?? abbr;
 
+/**
+ * Schlüssel für ESPNs Team-Endpunkte (Team, Kader, Spielplan, News, Depth Chart):
+ * die numerische ESPN-ID. Das Scoreboard-Kürzel taugt dafür nicht — /teams/LA
+ * antwortet mit HTTP 400, so fehlten Rams-Seite, -Kader und -News (Sept. 2026).
+ * Nimmt unsere wie ESPNs Kürzel an ("LAR" und "LA").
+ */
+export const espnTeamId = (abbr: string) => TEAM_FACTS[normalizeAbbr(abbr)]?.espnId ?? abbr;
+
 const kickoffFmt = new Intl.DateTimeFormat('de-DE', {
   weekday: 'short',
   day: 'numeric',
@@ -209,7 +217,7 @@ const toHttps = (url: string | null | undefined) =>
 
 export async function getNews(teamAbbr?: string, limit = 6): Promise<NewsItem[]> {
   const url = teamAbbr
-    ? `${SITE}/news?team=${encodeURIComponent(teamAbbr)}&limit=${limit}`
+    ? `${SITE}/news?team=${encodeURIComponent(espnTeamId(teamAbbr))}&limit=${limit}`
     : `${SITE}/news?limit=${limit}`;
   const data = await getJSON(url, 60 * 5);
   return (data?.articles ?? []).map((a: any) => ({
@@ -230,7 +238,7 @@ export async function getNews(teamAbbr?: string, limit = 6): Promise<NewsItem[]>
  */
 export async function getRoster(teamAbbr: string): Promise<any[]> {
   const data = await getJSON(
-    `${SITE}/teams/${denormalizeAbbr(teamAbbr)}/roster`,
+    `${SITE}/teams/${espnTeamId(teamAbbr)}/roster`,
     60 * 60
   );
   return data?.athletes ?? [];
@@ -557,7 +565,7 @@ function toTeamGame(event: any, teamAbbr: string): TeamGame | null {
  * Zwei ESPN-Aufrufe (Team + Schedule), beide server-seitig gecacht.
  */
 export async function getTeamOverview(teamAbbr: string): Promise<TeamOverview | null> {
-  const code = denormalizeAbbr(teamAbbr);
+  const code = espnTeamId(teamAbbr);
   const [teamData, schedData] = await Promise.all([
     getJSON(`${SITE}/teams/${code}`, 60 * 15),
     getJSON(`${SITE}/teams/${code}/schedule`, 60 * 60),

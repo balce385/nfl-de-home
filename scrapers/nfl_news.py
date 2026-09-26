@@ -10,7 +10,9 @@ Features:
   - Auto-Uebersetzung EN -> DE mit Fallback-Chain (siehe translate.py)
 """
 import feedparser
+import hashlib
 import re
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from .common import upsert, supabase_admin
 from .translate import translate_to_de
@@ -74,9 +76,27 @@ TEAM_PATTERNS: list[tuple[str, re.Pattern]] = [
 ]
 
 
+_UMLAUT = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"})
+
+
 def slugify(text: str) -> str:
-    s = re.sub(r"[^\w\s-]", "", text.lower())
-    return re.sub(r"[\s-]+", "-", s).strip("-")[:80]
+    """ASCII-Slug: Umlaute ausgeschrieben, Akzente entfernt, nur a-z, 0-9 und -."""
+    s = unicodedata.normalize("NFKD", text.lower().translate(_UMLAUT))
+    s = s.encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "-", s).strip("-")[:70].rstrip("-")
+
+
+def make_slug(title_orig: str, link: str) -> str:
+    """Stabiler Slug: Originaltitel plus Hash der Artikel-URL.
+
+    Frueher aus dem uebersetzten Titel und den letzten 10 Zeichen der Feed-ID.
+    Beides ging schief: Jede Uebersetzung (Google, LibreTranslate, keine) gab
+    einen anderen Slug und damit eine neue Zeile — derselbe Artikel stand bis
+    zu dreimal in der Sitemap. Und IDs wie ".../?p=420406" brachten "/" und "?"
+    in den Pfad: 241 Sitemap-URLs leiteten um, 30 endeten in 404.
+    """
+    digest = hashlib.sha1(link.encode()).hexdigest()[:8]
+    return f"{slugify(title_orig) or 'artikel'}-{digest}"
 
 
 def _strip_html(text: str | None) -> str:
@@ -123,6 +143,19 @@ def _last_published_per_source() -> dict[str, datetime]:
     return result
 
 
+def _known_links(links: list[str | None]) -> set[str]:
+    """Artikel-URLs, die schon in der Datenbank stehen."""
+    links = [x for x in links if x]
+    if not links:
+        return set()
+    try:
+        r = supabase_admin().table("articles").select("source_url").in_("source_url", links).execute()
+        return {row["source_url"] for row in r.data or []}
+    except Exception as e:  # noqa: BLE001 — dann eben ohne Vorfilter
+        print(f"  [warn] bekannte Artikel nicht abrufbar: {type(e).__name__}")
+        return set()
+
+
 def _is_newer(entry_pub: datetime | None, last: datetime | None) -> bool:
     """True wenn Eintrag neuer als letzter bekannter."""
     if not entry_pub:
@@ -147,10 +180,15 @@ def run():
             print(f"  [{source}] lade {url} ...")
             feed = feedparser.parse(url)
             entries = feed.entries[:30]
+            known = _known_links([e.get("link") for e in entries])
             new_count = 0
             for entry in entries:
                 title_orig = entry.get("title", "").strip()
                 if not title_orig:
+                    continue
+                # Schon gespeichert (evtl. mit anderer Ueberschrift): nicht noch
+                # einmal anlegen und nicht noch einmal uebersetzen.
+                if entry.get("link") in known:
                     continue
                 # Yahoo spiegelt PFT-Artikel wortgleich — nur einmal aufnehmen.
                 if title_orig.lower() in seen_titles:
@@ -175,8 +213,7 @@ def run():
 
                 team_id = _detect_team(title_orig, summary_orig, team_hint)
 
-                slug_base = slugify(title_de or title_orig)
-                slug = f"{slug_base}-{(entry.get('id') or entry.get('link', ''))[-10:]}"
+                slug = make_slug(title_orig, entry.get("link") or entry.get("id") or title_orig)
 
                 rows.append({
                     "slug": slug,

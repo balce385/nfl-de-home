@@ -18,6 +18,30 @@ export const OG_BASE = {
   ],
 };
 
+/** Ab hier kürzt Google Titel bzw. Beschreibungen im Suchergebnis (Näherung in Zeichen). */
+export const TITLE_MAX = 60;
+export const DESC_MAX = 155;
+const BRAND = ` | ${SITE_NAME}`;
+
+/** Kürzt an einer Wortgrenze und hängt "…" an; kurze Texte bleiben unverändert. */
+export function cutAtWord(text: string, max: number): string {
+  const t = text.replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  const head = t.slice(0, max - 1);
+  const space = head.lastIndexOf(' ');
+  return `${(space > max * 0.6 ? head.slice(0, space) : head).replace(/[\s,;:–—-]+$/, '')}…`;
+}
+
+/**
+ * Titel für lange, fremde Überschriften (Magazin-Artikel): die Marke nur, wenn
+ * sie noch in die ~60 Zeichen passt, sonst der gekürzte Titel allein. Sonst
+ * schneidet Google mitten im Wort ab — oder die Marke steht doppelt da.
+ */
+export function fitTitle(title: string): Metadata['title'] {
+  const t = title.replace(/\s+/g, ' ').trim();
+  return t.length + BRAND.length <= TITLE_MAX ? t : { absolute: cutAtWord(t, TITLE_MAX) };
+}
+
 /**
  * Metadaten einer Seite mit eigenem Canonical, og:url und og:title.
  *

@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { getArticle } from '@/data/articles';
+import { cutAtWord, DESC_MAX, fitTitle, OG_BASE } from '@/lib/seo';
 
 type Article = {
   slug: string;
@@ -191,17 +192,24 @@ export async function generateMetadata({
       .maybeSingle();
     a = data ?? null;
   }
-  if (!a) return { title: 'Artikel nicht gefunden — NFL DE Hub' };
+  // Schon hier abbrechen: Die Seite streamt, ein notFound() erst im Seiteninhalt
+  // kam mit HTTP 200 an — Google wertet das als Soft-404.
+  if (!a) notFound();
+  const description = a.excerpt ? cutAtWord(a.excerpt, DESC_MAX) : undefined;
+  const path = `/magazin/${params.slug}`;
   return {
-    title: `${a.title} — NFL DE Hub`,
-    description: a.excerpt ?? undefined,
-    alternates: { canonical: `/magazin/${params.slug}` },
+    // Vorher "Titel — NFL DE Hub | NFL-DE-Hub": Marke doppelt, Titel meist gekürzt.
+    title: fitTitle(a.title),
+    description,
+    alternates: { canonical: path },
     openGraph: {
+      ...OG_BASE,
       type: 'article',
+      url: path,
       title: a.title,
-      description: a.excerpt ?? undefined,
+      description,
       publishedTime: a.published_at ?? undefined,
-      images: a.cover_url ? [{ url: a.cover_url }] : undefined,
+      images: a.cover_url ? [{ url: a.cover_url }] : OG_BASE.images,
     },
   };
 }
