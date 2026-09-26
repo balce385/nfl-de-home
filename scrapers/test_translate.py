@@ -6,7 +6,7 @@ class _Blocked:
 
     def translate(self, text):
         self.calls += 1
-        raise Exception("Server Error: You made too many requests to the server.")
+        raise RuntimeError("Server Error: You made too many requests to the server.")
 
 
 class _Echo:
