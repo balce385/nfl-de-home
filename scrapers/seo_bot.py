@@ -113,6 +113,10 @@ def audit_page(url: str, status: int, html: str) -> dict:
 
     main = soup.find("main") or soup.body
     text = main.get_text(" ", strip=True) if main else ""
+    # Gestreamte Next.js-Seiten (z. B. /stats) liefern den Inhalt in versteckten
+    # Bloecken hinter dem <main> nach; Google setzt ihn zusammen, also zaehlt er mit.
+    streamed = " ".join(d.get_text(" ", strip=True) for d in soup.find_all("div", attrs={"hidden": True}))
+    text = f"{text} {streamed}".strip()
     if len(text.split()) < 150:
         issues.append(("info", f"wenig Text ({len(text.split())} Woerter)"))
 

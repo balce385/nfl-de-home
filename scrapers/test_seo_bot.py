@@ -54,3 +54,10 @@ def test_score():
     broken = audit_page(URL, 500, "")
     assert score([ok, ok]) == 100
     assert score([ok, broken]) == 50
+
+
+def test_gestreamter_inhalt_zaehlt_mit():
+    html = page().replace(f"<main><h1>Kansas City Chiefs</h1><p>{WORDS}</p></main>",
+                          f'<main><h1>Kansas City Chiefs</h1></main><div hidden id="S:0"><p>{WORDS}</p></div>')
+    assert "<div hidden" in html
+    assert not any("wenig Text" in m for m in msgs(audit_page(URL, 200, html)))

@@ -5,7 +5,7 @@ import { withSeo } from '@/lib/seo';
 export const metadata = withSeo({
   title: 'Playbook — NFL-Spielzüge spielen und verstehen',
   description:
-    'Echte NFL-Konzepte wie Mesh, Smash oder Wide Zone per Klick laden, die Coverage wählen und zusehen, wie der Spielzug gegen eine reagierende Defense läuft — mit Erklärung, warum er funktioniert.',
+    'Echte NFL-Konzepte wie Mesh, Smash oder Wide Zone gegen eine reagierende Defense laufen lassen, mit Erklärung, warum der Spielzug funktioniert.',
   path: '/playbook',
 });
 

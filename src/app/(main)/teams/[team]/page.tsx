@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: { params: { team: string } })
   return withSeo({
     // Unter 60 Zeichen samt Marke, damit Google nichts abschneidet.
     title: `${o.name}: Kader, Spielplan & News`,
-    description: `${o.name} auf Deutsch: Bilanz ${o.record}${standing}, nächstes Spiel, kompletter Kader mit Trikotnummern, Head Coach, Stadion und aktuelle News.`,
+    description: `${o.name} auf Deutsch: Bilanz ${o.record}${standing}, Spielplan, kompletter Kader, Head Coach, Stadion und News.`,
     path: `/teams/${params.team}`,
     image: o.logo,
   });

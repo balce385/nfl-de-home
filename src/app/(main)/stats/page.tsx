@@ -17,7 +17,7 @@ import { withSeo } from '@/lib/seo';
 export const metadata = withSeo({
   title: 'NFL Advanced Stats: QBR, ADoT & Next Gen Stats',
   description:
-    'Total QBR, Druckrate, ADoT, Yards nach dem Kontakt, gebrochene Tackles, zugelassenes Passer Rating, Separation und 8+ in der Box — Advanced Stats für Quarterbacks, Receiver, Tight Ends, Running Backs und die Defense, auf Deutsch erklärt.',
+    'Total QBR, Druckrate, ADoT, Yards nach Kontakt, Separation und 8+ in der Box: Advanced Stats für QBs, Receiver, RBs und Defense, auf Deutsch erklärt.',
   path: '/stats',
 });
 
