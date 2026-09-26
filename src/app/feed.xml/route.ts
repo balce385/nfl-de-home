@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createPublicClient } from '@/lib/supabase/public';
 import { articles as editorial } from '@/data/articles';
 import { SITE_URL } from '@/lib/seo';
 
@@ -12,12 +12,7 @@ const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 export async function GET() {
-  // Öffentlich und gecacht: kein Cookie-Client, derselbe Weg wie die Sitemap.
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  const { data } = await supabase
+  const { data } = await createPublicClient()
     .from('articles')
     .select('slug, title, excerpt, published_at')
     .order('published_at', { ascending: false, nullsFirst: false })

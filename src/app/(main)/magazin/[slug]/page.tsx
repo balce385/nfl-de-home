@@ -2,9 +2,16 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import { getArticle } from '@/data/articles';
-import { cutAtWord, DESC_MAX, fitTitle, OG_BASE } from '@/lib/seo';
+import { cutAtWord, DESC_MAX, fitTitle, isThin, OG_BASE } from '@/lib/seo';
+
+// Auf Abruf erzeugt und eine Stunde gecacht (ISR) statt bei jedem Aufruf
+// gestreamt: nur so kommt ein notFound() als echter 404 an.
+export const revalidate = 3600;
+export function generateStaticParams() {
+  return [];
+}
 
 type Article = {
   slug: string;
@@ -49,7 +56,7 @@ export default async function ArticlePage({
 
   // 2) Fallback: Supabase (News-Scraper-Artikel)
   if (!article) {
-    const supabase = createClient();
+    const supabase = createPublicClient();
     const { data } = await supabase
       .from('articles')
       .select('*')
@@ -173,21 +180,23 @@ export async function generateMetadata({
   let a: {
     title: string;
     excerpt: string | null;
+    body_md: string | null;
     cover_url: string | null;
     published_at: string | null;
   } | null = local
     ? {
         title: local.title,
         excerpt: local.excerpt,
+        body_md: local.body,
         cover_url: null,
         published_at: local.publishedAt ?? null,
       }
     : null;
   if (!a) {
-    const supabase = createClient();
+    const supabase = createPublicClient();
     const { data } = await supabase
       .from('articles')
-      .select('title, excerpt, cover_url, published_at')
+      .select('title, excerpt, body_md, cover_url, published_at')
       .eq('slug', params.slug)
       .maybeSingle();
     a = data ?? null;
@@ -207,6 +216,8 @@ export async function generateMetadata({
     title: fitTitle(a.title),
     description,
     alternates: { canonical: path },
+    // Nur der Feed-Anriss: lesbar, aber nicht in den Suchindex (siehe isThin).
+    robots: isThin(a.body_md) ? { index: false, follow: true } : undefined,
     openGraph: {
       ...OG_BASE,
       type: 'article',

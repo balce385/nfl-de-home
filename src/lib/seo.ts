@@ -23,6 +23,16 @@ export const TITLE_MAX = 60;
 export const DESC_MAX = 155;
 const BRAND = ` | ${SITE_NAME}`;
 
+/**
+ * Unter so vielen Wörtern gilt ein Artikel als dünn: Feed-Anrisse von zwei,
+ * drei Sätzen. Solche Seiten bekommen `noindex, follow` und stehen nicht in der
+ * Sitemap — viele dünne, automatisch übersetzte Seiten ziehen bei Google die
+ * Bewertung der ganzen Domain herunter.
+ */
+export const THIN_WORDS = 120;
+export const isThin = (text: string | null | undefined) =>
+  (text ?? '').trim().split(/\s+/).filter(Boolean).length < THIN_WORDS;
+
 /** Kürzt an einer Wortgrenze und hängt "…" an; kurze Texte bleiben unverändert. */
 export function cutAtWord(text: string, max: number): string {
   const t = text.replace(/\s+/g, ' ').trim();

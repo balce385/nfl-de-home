@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { movedArticlePath } from '@/lib/article-redirects';
 
 /**
  * Phase 2: Supabase Session Refresh Middleware.
@@ -10,6 +11,11 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
  * Supabase ist dann noch nicht konfiguriert.
  */
 export async function middleware(request: NextRequest) {
+  // Alte Artikel-Adressen dauerhaft auf die neuen Slugs umleiten (Bing hatte
+  // sie aus der Sitemap schon aufgenommen).
+  const moved = movedArticlePath(request.nextUrl.pathname, request.nextUrl.search);
+  if (moved) return NextResponse.redirect(new URL(moved, request.url), 301);
+
   const response = NextResponse.next({ request: { headers: request.headers } });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

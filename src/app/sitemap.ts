@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { createPublicClient } from '@/lib/supabase/public';
+import { isThin } from '@/lib/seo';
 import { articles } from '@/data/articles';
 import { TEAM_FACTS } from '@/data/team-facts';
 
@@ -31,18 +32,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     bySlug.set(a.slug, a.publishedAt ? new Date(a.publishedAt) : now);
   }
 
-  // Kein Cookie-Client: die Sitemap ist öffentlich und soll gecacht bleiben.
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-  const { data } = await supabase
+  const { data } = await createPublicClient()
     .from('articles')
-    .select('slug, published_at')
+    .select('slug, published_at, body_md')
     .order('published_at', { ascending: false })
     .limit(1000);
+  // Nur Artikel mit eigenem Text: Feed-Anrisse sind noindex (siehe isThin) und
+  // gehoeren deshalb auch nicht in die Sitemap.
   for (const a of data ?? []) {
-    if (a.slug) bySlug.set(a.slug, a.published_at ? new Date(a.published_at) : now);
+    if (a.slug && !isThin(a.body_md)) bySlug.set(a.slug, a.published_at ? new Date(a.published_at) : now);
   }
 
   const articleEntries: MetadataRoute.Sitemap = [...bySlug].map(([slug, lastModified]) => ({
