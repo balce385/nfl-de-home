@@ -1,14 +1,11 @@
 name: NFL Data + News Scrapers
 
 on:
-  # Seit 2026-08-24 loeste der Zeitplan nicht mehr aus, obwohl der Workflow
-  # "active" war. Ohne geplanten Lauf veralten alle Daten still — nach einer
-  # Pause darum unter Actions pruefen, ob "schedule"-Laeufe erscheinen.
-  schedule:
-    # Stuendlich: nur News (niedriges Datenvolumen, schnell, immer frisch)
-    - cron: '7 * * * *'
-    # Taeglich 05:00 UTC: voller Run (rosters, depth-charts, EPA, snap-counts, injuries, videos, news)
-    - cron: '0 5 * * *'
+  # Kein Zeitplan mehr: GitHub loeste ihn ab 2026-08-24 nicht mehr aus, obwohl
+  # der Workflow "active" war. Die Scraper laufen seit 2026-09-26 per Cron auf
+  # dem VPS (balce385/deploy-stack: crontab, scrape.sh); ob er laeuft, zeigt
+  # https://nfl-fan-app.de/api/health. Ein zweiter Zeitplan hier wuerde parallel
+  # schreiben (depth_charts wird geloescht und neu gefuellt). Nur noch manuell.
   workflow_dispatch:
     inputs:
       mode:
@@ -33,17 +30,17 @@ jobs:
       - name: Install dependencies
         run: pip install ./scrapers
 
-      # Stuendlich (cron: '7 * * * *') ODER manuell mit mode=news -> nur News
-      - name: Run news scraper only (hourly)
-        if: ${{ github.event.schedule == '7 * * * *' || inputs.mode == 'news' }}
+      # mode=news -> nur News
+      - name: Run news scraper only
+        if: ${{ inputs.mode == 'news' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python -m scrapers.nfl_news
 
-      # Taeglich (cron: '0 5 * * *') ODER manuell mit mode=full -> alle Scraper
-      - name: Run all scrapers (daily)
-        if: ${{ github.event.schedule == '0 5 * * *' || inputs.mode == 'full' }}
+      # mode=full -> alle Scraper
+      - name: Run all scrapers
+        if: ${{ inputs.mode == 'full' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
