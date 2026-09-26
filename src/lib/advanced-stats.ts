@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { passerRating } from '@/lib/nfl-stats';
+import { pickSeason } from '@/lib/season-pick';
 
 /**
  * Lädt die Next-Gen-Stats-Saisonwerte (week = 0) aus der Datenbank und
@@ -13,6 +14,8 @@ export type AdvancedRow = {
   team_id: string | null;
   season: number;
   headshot_url: string | null;
+  /** Mindestvolumen erreicht: steht in der Rangliste, sonst nur über die Suche. */
+  qualified: boolean;
 
   // Passspiel
   attempts: number | null;
@@ -52,11 +55,15 @@ const GROUP_POSITIONS: Record<PositionGroup, string[]> = {
   RUSH: ['RB', 'FB', 'HB'],
 };
 
-/** Mindestvolumen, damit Kleinststichproben die Rangliste nicht verzerren. */
-const MIN_VOLUME: Record<PositionGroup, { column: string; value: number }> = {
-  QB: { column: 'attempts', value: 100 },
-  REC: { column: 'targets', value: 30 },
-  RUSH: { column: 'rush_attempts', value: 40 },
+/**
+ * Mindestvolumen einer vollen Saison, damit Kleinststichproben die Rangliste
+ * nicht verzerren. Früh in der Saison senkt pickSeason() die Schwelle.
+ * `players`: so viele Spieler muss eine Saison über der Schwelle haben.
+ */
+const MIN_VOLUME: Record<PositionGroup, { column: string; value: number; players: number }> = {
+  QB: { column: 'attempts', value: 100, players: 16 },
+  REC: { column: 'targets', value: 30, players: 40 },
+  RUSH: { column: 'rush_attempts', value: 40, players: 20 },
 };
 
 const num = (v: unknown): number | null => {
@@ -128,31 +135,45 @@ export async function getTopPasser(): Promise<TopPasser | null> {
 export async function getAdvancedStats(group: PositionGroup): Promise<{
   rows: AdvancedRow[];
   season: number | null;
+  /** Volumen, ab dem ein Spieler in der Rangliste steht (siehe pickSeason). */
+  minVolume: number | null;
 }> {
   const supabase = createClient();
   const min = MIN_VOLUME[group];
 
-  // Neueste Saison ermitteln, in der diese Positionsgruppe das Mindestvolumen
-  // auch erreicht — nicht bloß die neueste, für die irgendein Wert existiert.
-  //
-  // Der Unterschied ist im September der zwischen voller und leerer Tabelle:
-  // Dann stehen für die laufende Saison erst ein paar Dutzend Zeilen in der
-  // Datenbank, von denen noch kein Quarterback 100 Würfe hat. Ohne den
-  // Volumenfilter schon hier gewinnt diese Saison die Abfrage, und die
-  // vollständige Vorsaison daneben wird nie gezeigt.
-  const { data: seasonRow } = await supabase
+  // Saison und Schwelle aus den beiden jüngsten Saisons bestimmen: im
+  // September zählt die laufende erst, wenn genug Spieler mitspielen.
+  const { data: latest } = await supabase
     .from('player_advanced')
     .select('season')
     .eq('week', 0)
     .in('position', GROUP_POSITIONS[group])
-    .gte(min.column, min.value)
     .order('season', { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (!latest?.season) return { rows: [], season: null, minVolume: null };
 
-  const season = seasonRow?.season ?? null;
-  if (!season) return { rows: [], season: null };
+  const { data: volumes } = await supabase
+    .from('player_advanced')
+    .select(`season, ${min.column}`)
+    .eq('week', 0)
+    .in('position', GROUP_POSITIONS[group])
+    .gte('season', latest.season - 1)
+    .limit(2000);
 
+  const picked = pickSeason(
+    ((volumes ?? []) as unknown as Record<string, unknown>[]).map((r) => ({
+      season: Number(r.season),
+      volume: num(r[min.column]),
+    })),
+    min.value,
+    min.players
+  );
+  if (!picked) return { rows: [], season: null, minVolume: null };
+  const { season, threshold } = picked;
+
+  // Alle Spieler der Saison laden, nicht nur die Rangliste: Die Suche soll
+  // auch Backups und Verletzte finden (Brock Purdy fehlte sonst im September).
   const { data, error } = await supabase
     .from('player_advanced')
     .select(
@@ -165,10 +186,9 @@ export async function getAdvancedStats(group: PositionGroup): Promise<{
     .eq('week', 0)
     .eq('season', season)
     .in('position', GROUP_POSITIONS[group])
-    .gte(min.column, min.value)
-    .limit(200);
+    .limit(1000);
 
-  if (error || !data) return { rows: [], season };
+  if (error || !data) return { rows: [], season, minVolume: threshold };
 
   // Der generierte Supabase-Typ kommt mit dem eingebetteten players(...)-Join
   // nicht zurecht; die Felder werden unten einzeln geprüft und konvertiert.
@@ -196,6 +216,7 @@ export async function getAdvancedStats(group: PositionGroup): Promise<{
       team_id: (r.team_id as string) ?? null,
       season: Number(r.season),
       headshot_url: player?.headshot_url ?? null,
+      qualified: (num(r[min.column]) ?? 0) >= threshold,
       attempts,
       completions,
       pass_yards: passYards,
@@ -222,5 +243,5 @@ export async function getAdvancedStats(group: PositionGroup): Promise<{
     };
   });
 
-  return { rows, season };
+  return { rows, season, minVolume: threshold };
 }

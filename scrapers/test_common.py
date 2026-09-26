@@ -14,3 +14,21 @@ def test_real_errors_are_not_retried():
     assert not _is_retryable_db(APIError({"message": "violates check constraint", "code": "23514"}))
     assert not _is_retryable_db(APIError({"message": "column not found", "code": "PGRST204"}))
     assert not _is_retryable_db(APIError({"message": "bad request", "code": 400}))
+
+
+def test_upsert_sparse_laesst_leere_ids_weg(monkeypatch):
+    from scrapers import common
+
+    calls = []
+    monkeypatch.setattr(common, "upsert", lambda table, rows, on_conflict=None: calls.append(rows))
+    common.upsert_sparse("players", [
+        {"id": "a", "espn_id": "1", "yahoo_id": None},
+        {"id": "b", "espn_id": None, "yahoo_id": None},
+        {"id": "c", "espn_id": "3", "yahoo_id": ""},
+    ], on_conflict="id", optional={"espn_id", "yahoo_id"})
+
+    # Gleiche Spaltenmenge landet in einer Anfrage, NULL-IDs sind nicht dabei.
+    assert sorted(calls, key=len) == [
+        [{"id": "b"}],
+        [{"id": "a", "espn_id": "1"}, {"id": "c", "espn_id": "3"}],
+    ]

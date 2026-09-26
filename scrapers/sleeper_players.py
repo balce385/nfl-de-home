@@ -7,7 +7,7 @@ Wir nutzen die GSIS-ID (= nflverse player_id) als primären players.id, damit
 die nflverse-Stats sauber per Foreign-Key referenzieren können.
 """
 import httpx
-from .common import upsert, client_headers, supabase_admin
+from .common import upsert_sparse, client_headers, supabase_admin
 
 URL = "https://api.sleeper.app/v1/players/nfl"
 
@@ -24,6 +24,14 @@ TEAM_MAP = {
 # Wir akzeptieren auch Teams die in unserer DB noch nicht existieren — FK-Verstöße
 # fangen wir ab, indem wir team_id auf NULL setzen wenn unbekannt.
 _TEAM_CACHE: set[str] | None = None
+
+
+ID_FIELDS = {"espn_id", "yahoo_id", "rotowire_id"}
+
+
+def _id(v) -> str | None:
+    """Sleeper liefert IDs mal als Zahl, mal als Text, mal als 0."""
+    return str(v).strip() if v not in (None, "", 0, "0") else None
 
 
 def _known_teams() -> set[str]:
@@ -93,13 +101,17 @@ def run():
             "status": p.get("status") or "Active",
             "injury_status": p.get("injury_status"),
             "injury_body_part": p.get("injury_body_part"),
+            # Sleeper kennt ESPN-IDs auch fuer Free Agents und Spieler ohne
+            # aktuellen Kader, die nflverse-Roster nicht enthalten. Ohne ESPN-ID
+            # gibt es keine Spielerkarte in der Suche.
+            "espn_id": _id(p.get("espn_id")),
+            "yahoo_id": _id(p.get("yahoo_id")),
+            "rotowire_id": _id(p.get("rotowire_id")),
         })
 
     print(f"  Sleeper geliefert: {len(data)} | mit GSIS: {len(rows)} | skipped no-gsis: {skipped_no_gsis}")
     # Chunk-Upsert (Supabase REST hat Body-Limits)
-    BATCH = 500
-    for i in range(0, len(rows), BATCH):
-        upsert("players", rows[i:i + BATCH], on_conflict="id")
+    upsert_sparse("players", rows, on_conflict="id", optional=ID_FIELDS)
     print(f"  ✓ {len(rows)} players in DB")
 
 

@@ -14,9 +14,12 @@
  */
 
 import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Search } from 'lucide-react';
+import { ArrowDown, ArrowUp } from 'lucide-react';
 import { METRICS, formatMetric } from '@/lib/nfl-stats';
 import type { AdvPlayerRow } from '@/lib/pfr-advanced';
+import { matchesQuery, type SearchPlayer } from '@/lib/player-search';
+import { StatsSearch, type SearchTeam } from './StatsSearch';
+import { PlayerQuickCard } from './PlayerQuickCard';
 
 export type AdvColumn = {
   /** Schlüssel in AdvPlayerRow['stats']. */
@@ -47,6 +50,7 @@ export function AdvTable({
   columns,
   defaultSort,
   caption,
+  teams,
 }: {
   rows: AdvPlayerRow[];
   columns: AdvColumn[];
@@ -54,21 +58,19 @@ export function AdvTable({
   defaultSort: string;
   /** Zeile über der Tabelle, z. B. "Receiver & Tight Ends · Saison 2025". */
   caption: string;
+  teams: SearchTeam[];
 }) {
   const [sortKey, setSortKey] = useState(defaultSort);
   const [asc, setAsc] = useState(false);
   const [query, setQuery] = useState('');
+  const [picked, setPicked] = useState<SearchPlayer | null>(null);
+  const teamIds = useMemo(() => new Set(teams.map((t) => t.id)), [teams]);
+  const names = useMemo(() => rows.map((r) => r.player), [rows]);
 
   const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const filtered = q
-      ? rows.filter(
-          (r) =>
-            r.player.toLowerCase().includes(q) ||
-            r.team.toLowerCase().includes(q) ||
-            (r.pos ?? '').toLowerCase().includes(q)
-        )
-      : rows;
+    const filtered = rows.filter((r) =>
+      matchesQuery({ name: r.player, team: r.team, pos: r.pos }, query, teamIds)
+    );
 
     return [...filtered].sort((a, b) => {
       const av = a.stats[sortKey] ?? null;
@@ -79,7 +81,7 @@ export function AdvTable({
       if (bv === null) return -1;
       return asc ? av - bv : bv - av;
     });
-  }, [rows, query, sortKey, asc]);
+  }, [rows, query, sortKey, asc, teamIds]);
 
   const toggleSort = (key: string) => {
     if (key === sortKey) {
@@ -101,17 +103,29 @@ export function AdvTable({
         <p className="text-sm text-mute">
           {caption} · <span className="font-mono">{visible.length}</span> Spieler
         </p>
-        <label className="flex items-center gap-2 card px-3 py-2">
-          <Search size={14} className="text-mute shrink-0" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Spieler, Team oder Position …"
-            className="bg-transparent text-sm outline-none w-52"
-            aria-label="Spieler suchen"
-          />
-        </label>
+        <StatsSearch
+          value={query}
+          onChange={(v) => {
+            setQuery(v);
+            if (picked && v !== picked.name) setPicked(null);
+          }}
+          localNames={names}
+          teams={teams}
+          onPickPlayer={setPicked}
+          placeholder="Spieler, Team oder Position …"
+        />
       </div>
+
+      {picked && visible.length === 0 && (
+        <PlayerQuickCard
+          player={picked}
+          onClose={() => {
+            setPicked(null);
+            setQuery('');
+          }}
+          reason={`${picked.name} steht nicht in dieser Tabelle — zu wenig Einsätze für die Auswertung oder eine andere Position. Die Werte unten kommen direkt von ESPN.`}
+        />
+      )}
 
       <div className="card overflow-x-auto">
         <table className="w-full text-sm border-collapse">

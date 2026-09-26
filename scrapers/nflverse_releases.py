@@ -21,7 +21,7 @@ import re
 from typing import Iterable
 from datetime import datetime
 import httpx
-from .common import upsert, client_headers, supabase_admin, normalize_abbr
+from .common import upsert, upsert_sparse, client_headers, supabase_admin, normalize_abbr
 
 BASE = "https://github.com/nflverse/nflverse-data/releases/download"
 
@@ -125,9 +125,9 @@ def run_rosters(season: int = None):
             "status": r.get("status") or "Active",
         })
     print(f"  -> {len(rows)} Roster-Eintraege")
-    BATCH = 500
-    for i in range(0, len(rows), BATCH):
-        upsert("players", rows[i:i + BATCH], on_conflict="id")
+    # Fehlende IDs nicht mit NULL ueberschreiben: Sleeper hat sie womoeglich.
+    upsert_sparse("players", rows, on_conflict="id",
+                  optional={"espn_id", "pfr_id", "rotowire_id", "yahoo_id", "headshot_url"})
     print(f"  [OK] {len(rows)} players upgedatet")
 
 

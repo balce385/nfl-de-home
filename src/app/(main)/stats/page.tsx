@@ -11,6 +11,7 @@ import {
   getQbr,
   type AdvPlayerRow,
 } from '@/lib/pfr-advanced';
+import { getAllTeams } from '@/lib/nfl-live';
 
 export const metadata = {
   title: 'Advanced Stats — QBR, Druckrate, ADoT, Separation & Next Gen Stats',
@@ -149,14 +150,17 @@ export default async function StatsPage({
     : 'QB';
 
   const extra = EXTRA[group];
-  const [{ rows, season }, pressure, extraRows] = await Promise.all([
+  const [{ rows, season, minVolume }, pressure, extraRows, allTeams] = await Promise.all([
     // Die Defense hat keine Next-Gen-Stats-Zeilen; der Aufruf entfällt.
     group === 'DEF'
-      ? Promise.resolve({ rows: [], season: null })
+      ? Promise.resolve({ rows: [], season: null, minVolume: null })
       : getAdvancedStats(group as PositionGroup),
     group === 'QB' ? getPressureLeaders(20) : Promise.resolve([]),
     extra ? extra.load() : Promise.resolve([]),
+    getAllTeams(),
   ]);
+  // Fuer die Vorschlaege im Suchfeld; das Logo steht schon im ESPN-Teamabruf.
+  const teams = allTeams.map((t) => ({ id: t.id, name: t.name, shortName: t.shortName, logo: t.logo }));
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-16">
@@ -202,7 +206,13 @@ export default async function StatsPage({
         </div>
       )}
       {group !== 'DEF' && rows.length > 0 && (
-        <AdvancedStatsTable group={group as PositionGroup} rows={rows} season={season} />
+        <AdvancedStatsTable
+          group={group as PositionGroup}
+          rows={rows}
+          season={season}
+          minVolume={minVolume}
+          teams={teams}
+        />
       )}
 
       {/* Druck und Wurfqualitaet (Pro-Football-Reference ueber nflverse) */}
@@ -241,6 +251,7 @@ export default async function StatsPage({
             <span className="text-xs font-mono text-mute">Saison {extraRows[0].season}</span>
           </div>
           <AdvTable
+            teams={teams}
             rows={extraRows}
             columns={extra.columns}
             defaultSort={extra.sort}

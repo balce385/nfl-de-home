@@ -6,9 +6,19 @@
  */
 
 import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Search } from 'lucide-react';
+import { ArrowDown, ArrowUp } from 'lucide-react';
 import { METRICS, formatMetric, ratingLabel } from '@/lib/nfl-stats';
 import type { AdvancedRow, PositionGroup } from '@/lib/advanced-stats';
+import { matchesQuery, type SearchPlayer } from '@/lib/player-search';
+import { StatsSearch, type SearchTeam } from './StatsSearch';
+import { PlayerQuickCard } from './PlayerQuickCard';
+
+/** Womit das Mindestvolumen gezählt wird, für den Hinweis über der Tabelle. */
+const VOLUME_UNIT: Record<PositionGroup, string> = {
+  QB: 'Würfen',
+  REC: 'Anspielen',
+  RUSH: 'Läufen',
+};
 
 type Column = {
   key: keyof AdvancedRow;
@@ -80,23 +90,28 @@ export function AdvancedStatsTable({
   group,
   rows,
   season,
+  minVolume,
+  teams,
 }: {
   group: PositionGroup;
   rows: AdvancedRow[];
   season: number | null;
+  minVolume: number | null;
+  teams: SearchTeam[];
 }) {
   const columns = COLUMNS[group];
   const [sortKey, setSortKey] = useState<keyof AdvancedRow>(DEFAULT_SORT[group]);
   const [asc, setAsc] = useState(false);
   const [query, setQuery] = useState('');
+  const [picked, setPicked] = useState<SearchPlayer | null>(null);
+  const teamIds = useMemo(() => new Set(teams.map((t) => t.id)), [teams]);
+  const names = useMemo(() => rows.map((r) => r.name), [rows]);
 
   const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const filtered = q
-      ? rows.filter(
-          (r) => r.name.toLowerCase().includes(q) || (r.team_id ?? '').toLowerCase().includes(q)
-        )
-      : rows;
+    // Ohne Suche nur die Rangliste; die Suche findet auch alle darunter.
+    const filtered = query.trim()
+      ? rows.filter((r) => matchesQuery({ name: r.name, team: r.team_id }, query, teamIds))
+      : rows.filter((r) => r.qualified);
 
     return [...filtered].sort((a, b) => {
       const av = a[sortKey] as number | null;
@@ -107,7 +122,7 @@ export function AdvancedStatsTable({
       if (bv === null) return -1;
       return asc ? av - bv : bv - av;
     });
-  }, [rows, query, sortKey, asc]);
+  }, [rows, query, sortKey, asc, teamIds]);
 
   const toggleSort = (key: keyof AdvancedRow) => {
     if (key === sortKey) {
@@ -125,20 +140,36 @@ export function AdvancedStatsTable({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <p className="text-sm text-mute">
-          {GROUP_LABEL[group]} · Saison {season ?? '—'} ·{' '}
+          {`${GROUP_LABEL[group]} · Saison ${season ?? '—'} · `}
           <span className="font-mono">{visible.length}</span> Spieler
+          {!query.trim() && minVolume !== null && (
+            <span>{` · ab ${minVolume} ${VOLUME_UNIT[group]}, die Suche findet alle ${rows.length}`}</span>
+          )}
         </p>
-        <label className="flex items-center gap-2 card px-3 py-2">
-          <Search size={14} className="text-mute shrink-0" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Spieler oder Team suchen …"
-            className="bg-transparent text-sm outline-none w-52"
-            aria-label="Spieler suchen"
-          />
-        </label>
+        <StatsSearch
+          value={query}
+          onChange={(v) => {
+            setQuery(v);
+            if (picked && v !== picked.name) setPicked(null);
+          }}
+          localNames={names}
+          teams={teams}
+          onPickPlayer={setPicked}
+        />
       </div>
+
+      {picked && visible.length === 0 && (
+        <PlayerQuickCard
+          player={picked}
+          onClose={() => {
+            setPicked(null);
+            setQuery('');
+          }}
+          reason={`Für ${picked.name} liegen in dieser Tabelle keine Next-Gen-Werte der Saison ${
+            season ?? ''
+          } vor — andere Position, noch kein Einsatz oder Free Agent. Die Werte unten kommen direkt von ESPN.`}
+        />
+      )}
 
       <div className="card overflow-x-auto">
         <table className="w-full text-sm border-collapse">
@@ -189,7 +220,15 @@ export function AdvancedStatsTable({
                     <div className="min-w-0">
                       <div className="font-semibold truncate">{row.name}</div>
                       <div className="text-[10px] font-mono text-mute">
-                        {row.position} · {row.team_id ?? '—'}
+                        {`${row.position} · ${row.team_id ?? '—'}`}
+                        {!row.qualified && (
+                          <span
+                            className="ml-2 text-warn"
+                            title={`Unter ${minVolume} ${VOLUME_UNIT[group]} — Werte aus kleiner Stichprobe`}
+                          >
+                            wenig Einsätze
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -224,7 +263,9 @@ export function AdvancedStatsTable({
             {visible.length === 0 && (
               <tr>
                 <td colSpan={columns.length + 1} className="px-4 py-8 text-center text-mute text-sm">
-                  Keine Spieler gefunden.
+                  {query.trim()
+                    ? 'Kein Spieler dieser Tabelle passt. Vorschläge aus der ganzen Liga stehen in der Liste unter dem Suchfeld.'
+                    : 'Keine Spieler gefunden.'}
                 </td>
               </tr>
             )}

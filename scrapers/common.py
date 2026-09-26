@@ -150,3 +150,22 @@ def upsert(table: str, rows: list[dict[str, Any]], on_conflict: str | None = Non
     else:
         _execute(q.upsert(rows))
     print(f"  ↳ upserted {len(rows)} rows into {table}")
+
+
+def upsert_sparse(table: str, rows: list[dict[str, Any]], on_conflict: str,
+                  optional: set[str], batch: int = 500):
+    """Upsert, bei dem leere optionale Felder vorhandene Werte nicht loeschen.
+
+    Sleeper und nflverse kennen jeweils nur einen Teil der ESPN-, Yahoo- und
+    Rotowire-IDs. Ein normaler Upsert schreibt NULL, wo die zweite Quelle
+    nichts weiss, und loescht so die ID der ersten. Deshalb fallen leere
+    optionale Felder weg; PostgREST braucht je Anfrage dieselben Spalten,
+    also gehen Zeilen mit gleicher Spaltenmenge gemeinsam raus.
+    """
+    groups: dict[frozenset, list[dict[str, Any]]] = {}
+    for r in rows:
+        clean = {k: v for k, v in r.items() if not (k in optional and v in (None, ""))}
+        groups.setdefault(frozenset(clean), []).append(clean)
+    for group in groups.values():
+        for i in range(0, len(group), batch):
+            upsert(table, group[i:i + batch], on_conflict=on_conflict)
