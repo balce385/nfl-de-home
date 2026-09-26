@@ -4,8 +4,9 @@ import { siteOwner } from '@/data/site-owner';
 import { withSeo } from '@/lib/seo';
 
 export const metadata = withSeo({
-  title: 'Kontakt',
-  description: 'Fehler melden, Fragen stellen oder Auskunft nach DSGVO anfordern.',
+  title: 'Kontakt & Fehler melden',
+  description:
+    'Fehler auf nfl-fan-app.de melden, Fragen zu Daten und Quellen stellen oder Auskunft nach DSGVO anfordern.',
   path: '/kontakt',
 });
 

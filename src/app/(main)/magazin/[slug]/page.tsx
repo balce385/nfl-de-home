@@ -195,7 +195,12 @@ export async function generateMetadata({
   // Schon hier abbrechen: Die Seite streamt, ein notFound() erst im Seiteninhalt
   // kam mit HTTP 200 an — Google wertet das als Soft-404.
   if (!a) notFound();
-  const description = a.excerpt ? cutAtWord(a.excerpt, DESC_MAX) : undefined;
+  // Feed-Teaser sind oft nur ein halber Satz ("Hoffentlich besser als die Picks
+  // der letzten Woche"). Dann den Titel voranstellen, damit das Snippet sagt,
+  // worum es geht.
+  const teaser = a.excerpt?.trim() ?? '';
+  const raw = teaser.length >= 70 ? teaser : [a.title, teaser].filter(Boolean).join(' – ');
+  const description = raw ? cutAtWord(raw, DESC_MAX) : undefined;
   const path = `/magazin/${params.slug}`;
   return {
     // Vorher "Titel — NFL DE Hub | NFL-DE-Hub": Marke doppelt, Titel meist gekürzt.

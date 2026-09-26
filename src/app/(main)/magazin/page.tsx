@@ -5,7 +5,7 @@ import { getAllTeams } from '@/lib/nfl-live';
 import { withSeo } from '@/lib/seo';
 
 export const metadata = withSeo({
-  title: 'Magazin — NFL-Analysen, News und Fantasy auf Deutsch',
+  title: 'Magazin: NFL-News & Analysen auf Deutsch',
   description:
     'Tiefenanalysen, Spieltagsberichte, Fantasy-Tipps und Hintergründe — von der Redaktion des NFL-DE-Hub.',
   path: '/magazin',

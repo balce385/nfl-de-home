@@ -28,7 +28,8 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nfl-fan-app.de';
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'NFL News, Analysen & Fantasy Football auf Deutsch | NFL-DE-Hub',
+    // Unter 60 Zeichen, sonst kuerzt Google (SEO-Bot, scrapers/seo_bot.py).
+    default: 'NFL News, Analysen & Fantasy auf Deutsch | NFL-DE-Hub',
     template: '%s | NFL-DE-Hub',
   },
   description:

@@ -5,7 +5,7 @@ import { SITE_URL, withSeo } from '@/lib/seo';
 export const revalidate = 900;
 
 export const metadata = withSeo({
-  title: 'Alle 32 NFL-Teams — Kader, Spielplan & News auf Deutsch',
+  title: 'Alle 32 NFL-Teams: Kader, Spielplan & News',
   description:
     'Alle 32 NFL-Teams der AFC und NFC auf einen Blick: aktuelle Bilanz, Spielplan, kompletter Kader, Head Coach, Stadion und News — auf Deutsch.',
   path: '/teams',
