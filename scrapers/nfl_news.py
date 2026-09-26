@@ -11,7 +11,7 @@ Features:
 """
 import feedparser
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from .common import upsert, supabase_admin
 from .translate import translate_to_de
 
@@ -139,6 +139,7 @@ def run():
 
     rows: list[dict] = []
     new_per_source: dict[str, int] = {}
+    seen_titles: set[str] = set()
 
     for url, category, source, lang, team_hint in FEEDS:
         try:
@@ -150,6 +151,10 @@ def run():
                 title_orig = entry.get("title", "").strip()
                 if not title_orig:
                     continue
+                # Yahoo spiegelt PFT-Artikel wortgleich — nur einmal aufnehmen.
+                if title_orig.lower() in seen_titles:
+                    continue
+                seen_titles.add(title_orig.lower())
                 summary_orig = _strip_html(entry.get("summary", ""))[:1500]
 
                 pub_dt = None
@@ -205,6 +210,49 @@ def run():
     print(f"\n  [OK] gesamt {len(rows)} neue/aktualisierte Artikel")
     for s, n in new_per_source.items():
         print(f"       {s}: {n}")
+
+    _retranslate()
+
+
+# Google drosselt die feste VPS-IP bei vielen Anfragen am Stueck (am 26.09.2026
+# nach ~85 Artikeln). Was dann englisch gespeichert wurde, holen die naechsten
+# stuendlichen Laeufe nach, solange es juenger als RETRANSLATE_DAYS ist.
+RETRANSLATE_DAYS = 3
+RETRANSLATE_LIMIT = 30
+
+
+def _retranslate():
+    sb = supabase_admin()
+    since = (datetime.now(timezone.utc) - timedelta(days=RETRANSLATE_DAYS)).isoformat()
+    pending = (
+        sb.table("articles")
+        .select("id, title, body_md")
+        .eq("translated", False)
+        .gte("published_at", since)
+        .order("published_at", desc=True)
+        .limit(RETRANSLATE_LIMIT)
+        .execute()
+        .data
+        or []
+    )
+    done = 0
+    for a in pending:
+        title_de = translate_to_de(a["title"])
+        if not title_de or title_de == a["title"]:
+            continue  # Uebersetzer gesperrt (oder nichts zu uebersetzen)
+        body_de = translate_to_de(a["body_md"] or "") or a["body_md"]
+        if a["body_md"] and body_de == a["body_md"]:
+            continue  # mitten im Artikel gesperrt: nicht halb deutsch speichern
+        sb.table("articles").update({
+            "title": title_de[:200],
+            "excerpt": (body_de or "")[:300],
+            "body_md": body_de,
+            "language": "de",
+            "original_title": a["title"],
+            "translated": True,
+        }).eq("id", a["id"]).execute()
+        done += 1
+    print(f"  nachuebersetzt: {done} von {len(pending)} offenen")
 
 
 if __name__ == "__main__":

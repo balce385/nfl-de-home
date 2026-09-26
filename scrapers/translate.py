@@ -72,7 +72,8 @@ except Exception as e:
 
 
 _last_call = 0.0
-_MIN_INTERVAL = 0.4
+# 0.4 s liess Google die VPS-IP nach ~170 Anfragen am Stueck sperren.
+_MIN_INTERVAL = 1.0
 _blocked: set[str] = set()
 
 
