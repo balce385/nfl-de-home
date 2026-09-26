@@ -170,7 +170,8 @@ export function StatsSearch({
         <ul
           id={listId}
           role="listbox"
-          className="absolute right-0 z-30 mt-1 w-80 max-h-96 overflow-y-auto card bg-bg/95 backdrop-blur py-1 shadow-xl"
+          // Handy: so breit wie das Suchfeld, sonst ragt die Liste links hinaus.
+          className="absolute left-0 right-0 sm:left-auto sm:w-80 z-30 mt-1 max-h-96 overflow-y-auto card bg-bg/95 backdrop-blur py-1 shadow-xl"
         >
           {options.map((o, i) => {
             const first = i === 0 || options[i - 1].kind !== o.kind;
