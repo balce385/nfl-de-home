@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .common import supabase_admin
-from .nfl_news import make_slug
+from .nfl_news import clean_text, make_slug
 
 SEO_DIR = Path(os.getenv("SEO_DIR", "data/seo"))
 
@@ -41,6 +41,34 @@ def plan(rows: list[dict]) -> tuple[list[tuple[str, str]], list[str]]:
         if new != keep["slug"]:
             updates.append((keep["id"], new))
     return updates, deletes
+
+
+TEXT_FIELDS = ("title", "original_title", "excerpt", "body_md")
+
+
+def repair_text(rows: list[dict]) -> list[tuple[str, dict]]:
+    """(id, geaenderte Felder) fuer Zeilen mit zerlegten HTML-Entitaeten ("& # 8217;")."""
+    out = []
+    for r in rows:
+        changes = {f: clean_text(r[f]) for f in TEXT_FIELDS
+                   if r.get(f) and clean_text(r[f]) != r[f].strip()}
+        if changes:
+            out.append((r["id"], changes))
+    return out
+
+
+def run_fix_text(apply: bool) -> None:
+    sb = supabase_admin()
+    rows = (sb.table("articles").select("id, " + ", ".join(TEXT_FIELDS))
+            .or_(",".join(f"{f}.like.*&*" for f in TEXT_FIELDS)).limit(2000).execute().data or [])
+    fixes = repair_text(rows)
+    print(f"  {len(rows)} Artikel mit '&' · {len(fixes)} zu reparieren")
+    for aid, ch in fixes[:3]:
+        print(f"    {aid}: {next(iter(ch.values()))[:80]}")
+    if apply:
+        for aid, ch in fixes:
+            sb.table("articles").update(ch).eq("id", aid).execute()
+        print(f"  [OK] {len(fixes)} repariert")
 
 
 def run(apply: bool) -> None:
@@ -81,4 +109,7 @@ def run(apply: bool) -> None:
 
 
 if __name__ == "__main__":
-    run(apply="--apply" in sys.argv)
+    if "--fix-text" in sys.argv:
+        run_fix_text(apply="--apply" in sys.argv)
+    else:
+        run(apply="--apply" in sys.argv)

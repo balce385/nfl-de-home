@@ -11,6 +11,7 @@ Features:
 """
 import feedparser
 import hashlib
+import html
 import re
 import unicodedata
 from datetime import datetime, timedelta, timezone
@@ -101,10 +102,25 @@ def make_slug(title_orig: str, link: str) -> str:
     return f"{slugify(title_orig) or 'artikel'}-{digest}"
 
 
+_BROKEN_ENTITY = re.compile(r"&\s*#\s*(\d{2,6})\s*;")
+
+
+def clean_text(text: str | None) -> str:
+    """HTML-Entitaeten aufloesen, auch vom Uebersetzer zerlegte ("& # 8217;").
+
+    Die Feeds liefern "&#8217;" roh; ohne Aufloesen vor der Uebersetzung macht
+    der Uebersetzer daraus "& # 8217;", und so stand es in Titeln und Snippets.
+    """
+    if not text:
+        return ""
+    text = _BROKEN_ENTITY.sub(lambda m: chr(int(m.group(1))), text)
+    return html.unescape(text).strip()
+
+
 def _strip_html(text: str | None) -> str:
     if not text:
         return ""
-    return re.sub(r"<[^>]+>", "", text).strip()
+    return clean_text(re.sub(r"<[^>]+>", "", text))
 
 
 def _detect_team(title: str, summary: str, hint: str | None) -> str | None:
@@ -185,7 +201,7 @@ def run():
             known = _known_links([e.get("link") for e in entries])
             new_count = 0
             for entry in entries:
-                title_orig = entry.get("title", "").strip()
+                title_orig = clean_text(entry.get("title", ""))
                 if not title_orig:
                     continue
                 # Schon gespeichert (evtl. mit anderer Ueberschrift): nicht noch
@@ -209,8 +225,8 @@ def run():
                 if lang == "de":
                     title_de, summary_de, translated = title_orig, summary_orig, False
                 else:
-                    title_de = translate_to_de(title_orig) or title_orig
-                    summary_de = translate_to_de(summary_orig) or summary_orig
+                    title_de = clean_text(translate_to_de(title_orig)) or title_orig
+                    summary_de = clean_text(translate_to_de(summary_orig)) or summary_orig
                     translated = title_de != title_orig
 
                 team_id = _detect_team(title_orig, summary_orig, team_hint)

@@ -38,3 +38,19 @@ def test_plan_laesst_stabile_slugs_in_ruhe():
     rows = [{"id": "1", "slug": slug, "title": "Titel", "original_title": "Title",
              "source_url": PFT, "translated": True, "created_at": "x"}]
     assert plan(rows) == ([], [])
+
+
+def test_clean_text_repariert_zerlegte_entitaeten():
+    from scrapers.nfl_news import clean_text
+    assert clean_text("Die Bills & # 8217; Offensive") == "Die Bills ’ Offensive"
+    assert clean_text("Bills&#8217; Offense &amp; Defense") == "Bills’ Offense & Defense"
+    assert clean_text("A & B") == "A & B"
+
+
+def test_repair_text_nur_betroffene_felder():
+    from scrapers.article_slugs import repair_text
+    rows = [{"id": "1", "title": "Ok", "original_title": None,
+             "excerpt": "Die Bills & # 8217; Offensive", "body_md": "Die Bills & # 8217; Offensive"},
+            {"id": "2", "title": "Rot & Gold", "original_title": None, "excerpt": None, "body_md": None}]
+    assert repair_text(rows) == [("1", {"excerpt": "Die Bills ’ Offensive",
+                                        "body_md": "Die Bills ’ Offensive"})]
