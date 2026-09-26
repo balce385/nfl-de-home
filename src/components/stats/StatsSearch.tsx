@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { normalizeName, type SearchPlayer } from '@/lib/player-search';
 
@@ -204,6 +205,17 @@ export function StatsSearch({
         </ul>
       )}
     </div>
+  );
+}
+
+/** Teamkürzel in den Tabellen, verlinkt auf die Team-Seite — nur bei echten Teams ("2TM" nicht). */
+export function TeamAbbr({ id, teamIds }: { id: string | null; teamIds: Set<string> }) {
+  if (!id) return <>—</>;
+  if (!teamIds.has(id.toUpperCase())) return <>{id}</>;
+  return (
+    <Link href={`/teams/${id.toLowerCase()}`} className="underline decoration-dotted hover:text-ink">
+      {id}
+    </Link>
   );
 }
 

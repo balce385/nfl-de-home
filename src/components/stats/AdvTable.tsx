@@ -18,7 +18,7 @@ import { ArrowDown, ArrowUp } from 'lucide-react';
 import { METRICS, formatMetric } from '@/lib/nfl-stats';
 import type { AdvPlayerRow } from '@/lib/pfr-advanced';
 import { matchesQuery, type SearchPlayer } from '@/lib/player-search';
-import { StatsSearch, type SearchTeam } from './StatsSearch';
+import { StatsSearch, TeamAbbr, type SearchTeam } from './StatsSearch';
 import { PlayerQuickCard } from './PlayerQuickCard';
 
 export type AdvColumn = {
@@ -175,7 +175,8 @@ export function AdvTable({
                     <div className="min-w-0">
                       <div className="font-semibold truncate">{row.player}</div>
                       <div className="text-[10px] font-mono text-mute">
-                        {row.pos ?? '—'} · {row.team}
+                        {`${row.pos ?? '—'} · `}
+                        <TeamAbbr id={row.team} teamIds={teamIds} />
                       </div>
                     </div>
                   </div>

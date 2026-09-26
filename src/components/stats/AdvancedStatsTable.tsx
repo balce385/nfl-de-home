@@ -10,7 +10,7 @@ import { ArrowDown, ArrowUp } from 'lucide-react';
 import { METRICS, formatMetric, ratingLabel } from '@/lib/nfl-stats';
 import type { AdvancedRow, PositionGroup } from '@/lib/advanced-stats';
 import { matchesQuery, type SearchPlayer } from '@/lib/player-search';
-import { StatsSearch, type SearchTeam } from './StatsSearch';
+import { StatsSearch, TeamAbbr, type SearchTeam } from './StatsSearch';
 import { PlayerQuickCard } from './PlayerQuickCard';
 
 /** Womit das Mindestvolumen gezählt wird, für den Hinweis über der Tabelle. */
@@ -220,7 +220,8 @@ export function AdvancedStatsTable({
                     <div className="min-w-0">
                       <div className="font-semibold truncate">{row.name}</div>
                       <div className="text-[10px] font-mono text-mute">
-                        {`${row.position} · ${row.team_id ?? '—'}`}
+                        {`${row.position} · `}
+                        <TeamAbbr id={row.team_id} teamIds={teamIds} />
                         {!row.qualified && (
                           <span
                             className="ml-2 text-warn"

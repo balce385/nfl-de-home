@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Navbar } from '@/components/ui/Navbar';
 import { Footer } from '@/components/ui/Footer';
 import { LiveTicker } from '@/components/ui/LiveTicker';
@@ -48,7 +49,10 @@ export default async function HomePage() {
           </h2>
           <p className="text-mute mt-2 max-w-2xl">
             Beat Writers, offizieller YouTube-Channel und Live-News von ESPN —
-            für alle 32 NFL-Teams.
+            für alle 32 NFL-Teams.{' '}
+            <Link href="/teams" className="text-primary underline hover:text-accent">
+              Alle Team-Seiten mit Kader und Spielplan
+            </Link>
           </p>
           <div className="mt-8">
             <TeamMediaExplorer teams={teamList} />

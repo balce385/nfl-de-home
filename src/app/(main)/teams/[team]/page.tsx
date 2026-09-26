@@ -269,7 +269,11 @@ export default async function TeamPage({ params }: { params: { team: string } })
           </h2>
           <p className="text-mute text-sm mt-1">
             Live von ESPN, sortiert nach Trikotnummer. Werte zu jedem Spieler findest du über die
-            Suche auf der <Link href="/stats" className="text-primary hover:text-accent">Stats-Seite</Link>.
+            Suche auf der{' '}
+            <Link href="/stats" className="text-primary underline hover:text-accent">
+              Stats-Seite
+            </Link>
+            .
           </p>
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 mt-5">
             {roster.map((g) => (
