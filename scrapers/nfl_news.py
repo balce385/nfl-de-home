@@ -81,7 +81,9 @@ _UMLAUT = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"})
 
 def slugify(text: str) -> str:
     """ASCII-Slug: Umlaute ausgeschrieben, Akzente entfernt, nur a-z, 0-9 und -."""
-    s = unicodedata.normalize("NFKD", text.lower().translate(_UMLAUT))
+    # Apostrophe weg statt Trennstrich: "won't" -> "wont", nicht "won-t".
+    s = re.sub(r"['’`]", "", text.lower().translate(_UMLAUT))
+    s = unicodedata.normalize("NFKD", s)
     s = s.encode("ascii", "ignore").decode()
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")[:70].rstrip("-")
 
