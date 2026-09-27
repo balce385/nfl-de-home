@@ -43,11 +43,14 @@ export async function CommunitySection() {
               : 'Live-Threads zu jedem Spiel, Fantasy-Talk und Trash-Talk-Zonen für Rivalen-Wochen.'}
           </p>
 
-          <div className="mt-8 grid grid-cols-3 gap-4 max-w-md">
-            <Stat value={String(channels.length)} label={channels.length === 1 ? 'Channel' : 'Channels'} />
-            <Stat value={memberCount.toLocaleString('de-DE')} label={memberCount === 1 ? 'Mitglied' : 'Mitglieder'} />
-            <Stat value={messageCount.toLocaleString('de-DE')} label="Nachrichten" />
-          </div>
+          {/* Nullen wirken nach außen wie eine tote Seite: Zähler erst ab dem ersten Mitglied. */}
+          {memberCount > 0 && (
+            <div className="mt-8 grid grid-cols-3 gap-4 max-w-md">
+              <Stat value={String(channels.length)} label={channels.length === 1 ? 'Channel' : 'Channels'} />
+              <Stat value={memberCount.toLocaleString('de-DE')} label={memberCount === 1 ? 'Mitglied' : 'Mitglieder'} />
+              <Stat value={messageCount.toLocaleString('de-DE')} label="Nachrichten" />
+            </div>
+          )}
 
           {channels.length > 0 && (
             <ul className="mt-6 flex flex-wrap gap-2">
@@ -77,10 +80,12 @@ export async function CommunitySection() {
               <span className="text-accent">#</span>
               <span className="font-semibold">{channels[0]?.name ?? 'Allgemein'}</span>
             </div>
-            <span className="chip">
-              {messageCount.toLocaleString('de-DE')}{' '}
-              {messageCount === 1 ? 'Nachricht' : 'Nachrichten'}
-            </span>
+            {messageCount > 0 && (
+              <span className="chip">
+                {messageCount.toLocaleString('de-DE')}{' '}
+                {messageCount === 1 ? 'Nachricht' : 'Nachrichten'}
+              </span>
+            )}
           </div>
 
           <div className="space-y-4 text-sm min-h-[18rem]">

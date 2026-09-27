@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://nfl-fan-app.de';
-export const SITE_NAME = 'NFL-DE-Hub';
+export const SITE_NAME = 'NFL-Fan-App';
 
 /** Gemeinsame Open-Graph-Angaben; Titel, Text und URL setzt jede Seite selbst. */
 export const OG_BASE = {
@@ -13,7 +13,7 @@ export const OG_BASE = {
       url: '/og.png',
       width: 1200,
       height: 630,
-      alt: 'NFL-DE-Hub — NFL News, Analysen und Fantasy Football auf Deutsch',
+      alt: 'NFL-Fan-App — NFL News, Analysen und Fantasy Football auf Deutsch',
     },
   ],
 };
@@ -22,16 +22,6 @@ export const OG_BASE = {
 export const TITLE_MAX = 60;
 export const DESC_MAX = 155;
 const BRAND = ` | ${SITE_NAME}`;
-
-/**
- * Unter so vielen Wörtern gilt ein Artikel als dünn: Feed-Anrisse von zwei,
- * drei Sätzen. Solche Seiten bekommen `noindex, follow` und stehen nicht in der
- * Sitemap — viele dünne, automatisch übersetzte Seiten ziehen bei Google die
- * Bewertung der ganzen Domain herunter.
- */
-export const THIN_WORDS = 120;
-export const isThin = (text: string | null | undefined) =>
-  (text ?? '').trim().split(/\s+/).filter(Boolean).length < THIN_WORDS;
 
 /** Kürzt an einer Wortgrenze und hängt "…" an; kurze Texte bleiben unverändert. */
 export function cutAtWord(text: string, max: number): string {
@@ -74,7 +64,7 @@ export function withSeo({
   const full = `${title} | ${SITE_NAME}`;
   const images = image ? [{ url: image, alt: title }] : OG_BASE.images;
   return {
-    title,
+    title: fitTitle(title),
     description,
     alternates: { canonical: path },
     openGraph: { ...OG_BASE, images, title: full, description, url: path },

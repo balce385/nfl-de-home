@@ -267,8 +267,9 @@ def run():
     for s, n in new_per_source.items():
         print(f"       {s}: {n}")
 
-    retranslated = _retranslate()
-    indexnow.submit([f"{indexnow.SITE}/magazin/{r['slug']}" for r in rows] + retranslated)
+    # Nicht mehr an IndexNow melden: Scraper-Artikel sind noindex (fremde,
+    # uebersetzte Meldungen, siehe src/app/(main)/magazin/[slug]/page.tsx).
+    _retranslate()
 
 
 # Google drosselt die feste VPS-IP bei vielen Anfragen am Stueck (am 26.09.2026
@@ -279,7 +280,7 @@ RETRANSLATE_LIMIT = 30
 
 
 def _retranslate() -> list[str]:
-    """Uebersetzt offene Artikel nach; liefert ihre URLs fuer IndexNow."""
+    """Uebersetzt offene Artikel nach; liefert ihre URLs."""
     sb = supabase_admin()
     since = (datetime.now(timezone.utc) - timedelta(days=RETRANSLATE_DAYS)).isoformat()
     pending = (

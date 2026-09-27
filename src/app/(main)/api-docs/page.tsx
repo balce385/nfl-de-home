@@ -4,7 +4,7 @@ import { withSeo } from '@/lib/seo';
 export const metadata = withSeo({
   title: 'API: offene NFL-Daten als JSON',
   description:
-    'Die öffentlichen JSON-Endpunkte des NFL-DE-Hub: Team-Übersicht, News, Kader, Spielsituation.',
+    'Die öffentlichen JSON-Endpunkte der NFL-Fan-App: Team-Übersicht, News, Kader, Spielsituation.',
   path: '/api-docs',
 });
 

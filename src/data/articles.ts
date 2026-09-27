@@ -1,5 +1,5 @@
 /**
- * Redaktionelle Artikel mit vollem Text — Stand: 11. Juni 2026.
+ * Redaktionelle Artikel mit vollem Text — Stand: 27. September 2026. Neueste zuerst.
  * Quelle der Fakten: ESPN, AP/US News, CBS Sports, NFL.com, footballdb (siehe sourceUrl).
  * Diese Datei ist die lokale "Datenbank" fürs Magazin; Supabase-Artikel
  * (News-Scraper) werden zusätzlich angezeigt, sobald die DB gefüllt ist.
@@ -11,9 +11,55 @@ export type FullArticle = Article & {
   source?: string;
   sourceUrl?: string;
   teamId?: string;
+  /** Weiterführende Seite, unter dem Text verlinkt. */
+  related?: { href: string; label: string };
 };
 
 export const fullArticles: FullArticle[] = [
+  {
+    slug: 'nfl-week-2-2026-zahlen-saisonstart',
+    category: 'Analyse',
+    categoryColor: 'primary',
+    accentTeam: 'NFL',
+    accentColor: 'blue',
+    title: 'Nach Week 2: Die Zahlen hinter dem NFL-Saisonstart',
+    excerpt:
+      'Acht Teams sind ungeschlagen, aber nicht alle überzeugen: Die 49ers dominieren, die Eagles zittern sich durch, und die Patriots stellen vor dem Munich Game die beste Defense.',
+    publishedAt: '2026-09-27',
+    readingMinutes: 5,
+    source: 'ESPN (Ergebnisse und Statistiken)',
+    sourceUrl: 'https://www.espn.com/nfl/scoreboard',
+    related: { href: '/news', label: 'Live-Ergebnisse und Tabelle aller Divisionen' },
+    body: `Zwei Spieltage sind gespielt, und die Tabelle sortiert sich schon grob: Acht Teams stehen bei 2-0, acht bei 0-2, der Rest bei 1-1. Eine Bilanz allein sagt nach zwei Spielen aber wenig. Aussagekräftiger ist die Punktedifferenz, also erzielte minus kassierte Punkte. Sie zeigt, wer seine Spiele kontrolliert und wer knapp davongekommen ist.
+
+Die Top 5 nach Punktedifferenz
+
+1. San Francisco 49ers (2-0, +42): Zum Auftakt 27:7 gegen die Rams im Melbourne Cricket Ground, dem ersten NFL-Spiel in Australien, dann 35:13 gegen Miami. Brock Purdy brachte gegen die Dolphins 20 von 22 Pässen an, für 287 Yards und zwei Touchdowns. Mehr Kontrolle geht kaum.
+2. Seattle Seahawks (2-0, +27): Erst ein 13:10 gegen New England, dann ein 31:7 in Arizona. Dort fing Jaxon Smith-Njigba 9 Bälle für 155 Yards und drei Touchdowns.
+3. Las Vegas Raiders (2-0, +26): 27:13 gegen Miami, 26:14 bei den Chargers. Kirk Cousins warf in Los Angeles drei Touchdown-Pässe.
+4. Kansas City Chiefs (2-0, +24): Nach seiner Knieverletzung ist Patrick Mahomes zurück, und wie. Beim 33:30 gegen die Colts kam er auf 382 Yards und drei Touchdowns, Travis Kelce fing neun Bälle. Zum Auftakt gab es ein 31:10 gegen Denver.
+5. Minnesota Vikings (2-0, +23): Ein 39:22 gegen Green Bay und ein 9:3 in Chicago. Zwei Siege, die unterschiedlicher kaum sein könnten.
+
+Ungeschlagen, aber mit Fragezeichen
+
+Die Buffalo Bills stehen bei 2-0, haben aber schon 62 Punkte kassiert, so viele wie kein anderes ungeschlagenes Team. Beide Siege waren Shootouts: 36:31 in Houston, 41:31 gegen Detroit. Noch knapper wird es bei den Philadelphia Eagles. 24:22 gegen Washington, 24:20 in Tennessee, dazu zwei Interceptions von Jalen Hurts in Week 2. Eine Differenz von +6 ist die schwächste aller 2-0-Teams.
+
+Die Munich-Game-Teams: beide 1-1
+
+Die Detroit Lions, am 15. November Gastgeber in der Allianz Arena, haben ein 31:30 gegen New Orleans und ein 31:41 in Buffalo hinter sich. Die Offensive läuft: Jared Goff warf in Buffalo vier Touchdown-Pässe, Amon-Ra St. Brown fing 9 Bälle für 142 Yards und zwei Touchdowns. Das Problem sind 71 Gegenpunkte in zwei Spielen.
+
+Bei den New England Patriots ist es umgekehrt. Sie haben erst 16 Punkte zugelassen, das ist der Bestwert der Liga. Nach dem 10:13 in Seattle kam ein souveränes 20:3 gegen Pittsburgh. Treffen in München die beste Defense und eine der gefährlichsten Offensiven aufeinander, wird es spannend.
+
+Ganz unten
+
+Die Atlanta Falcons hatten nach zwei Spielen mit -38 die schlechteste Differenz der Liga, allein das 3:34 gegen Carolina tat weh. Am Donnerstag kam die Antwort: ein 35:14 in Green Bay, damit stehen sie bei 1-2. Die Miami Dolphins (-36) und die Los Angeles Chargers (-24) warten dagegen weiter auf ihren ersten Sieg.
+
+Kurios: Die Chicago Bears erzielten in Week 1 beim 59:37 in Carolina 59 Punkte, D'Andre Swift lief für drei Touchdowns. Eine Woche später gelangen ihnen beim 3:9 gegen Minnesota ganze drei Punkte.
+
+Was Week 3 bringt
+
+Heute Abend geht es ab 19 Uhr deutscher Zeit weiter, unter anderem mit Lions gegen Jets, Patriots in Jacksonville und Chiefs in Miami. Um 22:25 Uhr folgt das nächste Auslandsspiel: Ravens gegen Cowboys im Maracanã-Stadion in Rio de Janeiro. Die Nacht zum Dienstag schließt Eagles gegen Bears ab. Alle Ergebnisse gibt es live auf unserer News-Seite.`,
+  },
   {
     slug: 'mahomes-mega-vertrag-2033',
     category: 'News',
@@ -52,15 +98,16 @@ Für die Offense bedeutet das: Die spannendste Frage des Sommers ist nicht ob, s
     readingMinutes: 4,
     source: 'NFL.com',
     sourceUrl: 'https://www.nfl.com/international/games/munich/',
+    related: { href: '/nfl-munich-game-2026', label: 'Alle Infos zum Munich Game: Tickets, TV, Anreise' },
     body: `Deutschland bekommt sein nächstes NFL-Spiel — und es ist ein Kracher: Am Sonntag, 15. November 2026, treffen die New England Patriots in der Allianz Arena in München auf die Detroit Lions.
 
-Für deutsche Fans ist die Partie doppelt besonders. Mit Amon-Ra St. Brown steht einer der besten Receiver der Liga auf dem Feld — und einer, der dank seines deutschen Vaters und fließender Deutschkenntnisse längst zum Gesicht der NFL in Deutschland geworden ist. Sein Auftritt in München dürfte der emotionale Höhepunkt des NFL-Jahres hierzulande werden.
+Für deutsche Fans ist die Partie doppelt besonders. Mit Amon-Ra St. Brown steht einer der besten Receiver der Liga auf dem Feld — und einer, der dank seiner deutschen Mutter und fließender Deutschkenntnisse längst zum Gesicht der NFL in Deutschland geworden ist. Sein Auftritt in München dürfte der emotionale Höhepunkt des NFL-Jahres hierzulande werden.
 
-Der Ticketverkauf lief exklusiv über Ticketmaster; der öffentliche Verkauf startete bereits am 10. Juli. Erfahrungsgemäß übersteigt die Nachfrage das Angebot um ein Vielfaches — beim ersten Munich Game 2022 wollten rund drei Millionen Menschen Tickets für ein Stadion mit etwa 70.000 Plätzen.
+Der Ticketverkauf lief exklusiv über die offiziellen Kanäle der NFL. Erfahrungsgemäß übersteigt die Nachfrage das Angebot um ein Vielfaches — beim ersten Munich Game 2022 wollten rund drei Millionen Menschen Tickets für ein Stadion mit etwa 70.000 Plätzen.
 
-Die langfristige Perspektive steht ebenfalls: Die NFL hat sich mit München (2026, 2028) und Berlin (2027, 2029) auf einen festen Deutschland-Rhythmus verständigt. Das Olympiastadion Berlin und die Allianz Arena wechseln sich ab — Planungssicherheit für Fans, die das Event mit einer Reise verbinden wollen.
+Auch die langfristige Perspektive steht: Die NFL hat sich verpflichtet, 2026 und 2028 in der Allianz Arena zu spielen. Detroit hält seit 2024 die Marketingrechte der NFL für Deutschland, Österreich und die Schweiz.
 
-Unsere Community organisiert wie immer Watchpartys in mehreren Städten, Fahrgemeinschaften nach München und einen gemeinsamen Tailgate-Treffpunkt. Details folgen im Community-Bereich, sobald die Anstoßzeit final bestätigt ist (erwartet: 15:30 Uhr deutscher Zeit).`,
+Update 27. September 2026: Der Anstoß ist bestätigt — 15:30 Uhr deutscher Zeit, live und kostenlos bei RTL. Die Tickets sind ausverkauft, die Halbzeitshow spielt die US-Rockband Cage The Elephant. Alles Weitere zu Anreise und Restkarten steht auf unserer Seite zum Munich Game.`,
   },
   {
     slug: 'rookie-klasse-2026-minicamps',

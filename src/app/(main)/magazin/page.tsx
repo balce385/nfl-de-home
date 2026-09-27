@@ -7,7 +7,7 @@ import { withSeo } from '@/lib/seo';
 export const metadata = withSeo({
   title: 'Magazin: NFL-News & Analysen auf Deutsch',
   description:
-    'Tiefenanalysen, Spieltagsberichte, Fantasy-Tipps und Hintergründe — von der Redaktion des NFL-DE-Hub.',
+    'Tiefenanalysen, Spieltagsberichte, Fantasy-Tipps und Hintergründe — von der Redaktion der NFL-Fan-App.',
   path: '/magazin',
 });
 

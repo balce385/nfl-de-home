@@ -15,19 +15,19 @@ const wege = [
     icon: Mail,
     title: 'Allgemeine Fragen',
     text: 'Anregungen, Kritik, Wünsche für neue Funktionen.',
-    subject: 'NFL-DE-Hub: Frage',
+    subject: 'NFL-Fan-App: Frage',
   },
   {
     icon: Bug,
     title: 'Fehler melden',
     text: 'Falsche Zahlen, kaputte Seite, etwas hängt? Am besten mit der Adresse der Seite und dem, was du erwartet hättest.',
-    subject: 'NFL-DE-Hub: Fehlermeldung',
+    subject: 'NFL-Fan-App: Fehlermeldung',
   },
   {
     icon: Shield,
     title: 'Datenschutz',
     text: 'Auskunft, Berichtigung oder Löschung deiner Daten nach DSGVO.',
-    subject: 'NFL-DE-Hub: Datenschutzanfrage',
+    subject: 'NFL-Fan-App: Datenschutzanfrage',
   },
 ];
 

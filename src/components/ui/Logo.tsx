@@ -8,7 +8,7 @@ export function Logo() {
       </div>
       <div className="leading-tight">
         <div className="font-display text-lg font-bold tracking-tight">
-          NFL<span className="text-accent">·</span>Hub
+          NFL<span className="text-accent">-</span>Fan-App
         </div>
         <div className="text-[10px] font-mono uppercase tracking-widest text-mute -mt-0.5">
           Deutschland

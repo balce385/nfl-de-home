@@ -171,7 +171,7 @@ export default async function StatsPage({
           <span className="chip-accent chip">Next Gen Stats</span>
         </div>
         <h1 className="font-display text-5xl font-bold mt-4 leading-tight">
-          Zahlen, die das <span className="grad-text italic">Boxscore</span> nicht zeigt.
+          NFL Advanced Stats: Zahlen, die der <span className="grad-text italic">Boxscore</span> nicht zeigt.
         </h1>
         <p className="text-mute mt-3 text-lg">
           Die NFL misst per Chip in Schulterpolstern und Ball, wie schnell ein Quarterback wirft, wie

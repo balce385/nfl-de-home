@@ -27,7 +27,7 @@ export async function GET() {
   return new NextResponse(JSON.stringify(payload, null, 2), {
     headers: {
       'Content-Type': 'application/json',
-      'Content-Disposition': `attachment; filename="nfl-de-hub-export-${user.id}.json"`,
+      'Content-Disposition': `attachment; filename="nfl-fan-app-export-${user.id}.json"`,
     },
   });
 }

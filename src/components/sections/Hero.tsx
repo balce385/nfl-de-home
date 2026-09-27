@@ -21,6 +21,10 @@ export async function Hero() {
               {game ? `Saison ${game.season} · Week ${game.week}` : 'NFL · Live'}
             </span>
             <span className="chip">DACH · Deutsch</span>
+            {/* ponytail: nach dem 15.11.2026 entfernen oder auf das nächste Deutschland-Spiel umstellen */}
+            <Link href="/nfl-munich-game-2026" className="chip-warn chip hover:opacity-80">
+              Munich Game 15.11. →
+            </Link>
           </div>
 
           <h1

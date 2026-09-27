@@ -5,7 +5,7 @@ import { withSeo } from '@/lib/seo';
 export const metadata = withSeo({
   title: 'Über dieses Projekt',
   description:
-    'Wer hinter dem NFL-DE-Hub steckt, woher die Daten kommen und was das Projekt ausdrücklich nicht ist.',
+    'Wer hinter der NFL-Fan-App steckt, woher die Daten kommen und was das Projekt ausdrücklich nicht ist.',
   path: '/about',
 });
 
@@ -17,7 +17,7 @@ export default function AboutPage() {
         Ein Fan-Projekt. <span className="grad-text italic">Kein Medienhaus.</span>
       </h1>
       <p className="text-mute mt-4 text-lg leading-relaxed">
-        Der NFL-DE-Hub ist ein privates Projekt von {siteOwner.name} — gebaut, weil es für
+        Die NFL-Fan-App ist ein privates Projekt von {siteOwner.name} — gebaut, weil es für
         deutschsprachige NFL-Fans wenig gibt, das Live-Daten, Advanced Stats und einen Ort zum
         Reden zusammenbringt. Keine Firma, kein Team, keine Werbung, keine Bezahlschranke.
       </p>

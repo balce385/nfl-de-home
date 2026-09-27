@@ -29,20 +29,13 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     // Unter 60 Zeichen, sonst kuerzt Google (SEO-Bot, scrapers/seo_bot.py).
-    default: 'NFL News, Analysen & Fantasy auf Deutsch | NFL-DE-Hub',
-    template: '%s | NFL-DE-Hub',
+    default: 'NFL News, Analysen & Fantasy auf Deutsch | NFL-Fan-App',
+    template: '%s | NFL-Fan-App',
   },
   description:
     'Aktuelle NFL-News, tiefgehende Analysen und Fantasy-Football-Tools auf Deutsch. Bleib informiert, optimiere dein Team und diskutiere mit der Community.',
-  keywords: [
-    'NFL News Deutsch',
-    'Fantasy Football Strategie',
-    'NFL Analysen auf Deutsch',
-    'NFL Community Deutschland',
-    'NFL Statistiken und Prognosen',
-  ],
   openGraph: {
-    siteName: 'NFL-DE-Hub',
+    siteName: 'NFL-Fan-App',
     title: 'NFL auf Deutsch — Dein Portal für News, Analysen & Fantasy Football',
     description:
       'Entdecke die neuesten NFL-News, datengetriebene Analysen und Fantasy-Football-Tools auf Deutsch.',
@@ -54,13 +47,13 @@ export const metadata: Metadata = {
         url: '/og.png',
         width: 1200,
         height: 630,
-        alt: 'NFL-DE-Hub — NFL News, Analysen und Fantasy Football auf Deutsch',
+        alt: 'NFL-Fan-App — NFL News, Analysen und Fantasy Football auf Deutsch',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'NFL auf Deutsch — News, Analysen & Fantasy Football | NFL-DE-Hub',
+    title: 'NFL auf Deutsch — News, Analysen & Fantasy Football | NFL-Fan-App',
     description:
       'Aktuelle NFL-News, tiefgehende Analysen und Fantasy-Football-Tools auf Deutsch.',
     images: ['/og.png'],
@@ -81,7 +74,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* Hier statt in `metadata.alternates`: Seiten mit eigenem Canonical
             überschreiben `alternates` komplett, der Feed-Link ginge verloren. */}
-        <link rel="alternate" type="application/rss+xml" title="NFL-DE-Hub News" href="/feed.xml" />
+        <link rel="alternate" type="application/rss+xml" title="NFL-Fan-App News" href="/feed.xml" />
       </head>
       <body className="font-body bg-bg text-ink antialiased">
         <script
@@ -93,7 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 '@type': 'WebSite',
                 '@id': `${SITE_URL}/#website`,
                 url: SITE_URL,
-                name: 'NFL-DE-Hub',
+                name: 'NFL-Fan-App',
                 description:
                   'NFL-News, Analysen, Advanced Stats und Fantasy Football auf Deutsch.',
                 inLanguage: 'de-DE',
@@ -103,8 +96,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 '@context': 'https://schema.org',
                 '@type': 'Organization',
                 '@id': `${SITE_URL}/#organization`,
-                name: 'NFL-DE-Hub',
+                name: 'NFL-Fan-App',
                 url: SITE_URL,
+                logo: `${SITE_URL}/icon.png`,
                 description:
                   'Deutschsprachiges Portal für NFL-News, Advanced Stats und Fantasy Football.',
               },

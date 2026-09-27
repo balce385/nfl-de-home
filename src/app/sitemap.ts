@@ -1,6 +1,4 @@
 import type { MetadataRoute } from 'next';
-import { createPublicClient } from '@/lib/supabase/public';
-import { isThin } from '@/lib/seo';
 import { articles } from '@/data/articles';
 import { TEAM_FACTS } from '@/data/team-facts';
 
@@ -10,7 +8,7 @@ export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
-  const routes = ['', '/news', '/teams', '/stats', '/playbook', '/magazin', '/community', '/about', '/api-docs', '/kontakt'];
+  const routes = ['', '/news', '/teams', '/stats', '/playbook', '/magazin', '/nfl-munich-game-2026', '/community', '/about', '/api-docs', '/kontakt'];
 
   const staticEntries: MetadataRoute.Sitemap = routes.map((path) => ({
     url: `${SITE_URL}${path}`,
@@ -27,20 +25,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
+  // Nur eigene Artikel: Scraper-Meldungen sind noindex (siehe magazin/[slug]).
   const bySlug = new Map<string, Date>();
   for (const a of articles) {
     bySlug.set(a.slug, a.publishedAt ? new Date(a.publishedAt) : now);
-  }
-
-  const { data } = await createPublicClient()
-    .from('articles')
-    .select('slug, published_at, body_md')
-    .order('published_at', { ascending: false })
-    .limit(1000);
-  // Nur Artikel mit eigenem Text: Feed-Anrisse sind noindex (siehe isThin) und
-  // gehoeren deshalb auch nicht in die Sitemap.
-  for (const a of data ?? []) {
-    if (a.slug && !isThin(a.body_md)) bySlug.set(a.slug, a.published_at ? new Date(a.published_at) : now);
   }
 
   const articleEntries: MetadataRoute.Sitemap = [...bySlug].map(([slug, lastModified]) => ({

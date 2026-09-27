@@ -7,9 +7,10 @@ import { fullArticles } from '@/data/articles';
 import { withSeo } from '@/lib/seo';
 
 export const metadata = withSeo({
-  title: 'News — Live-Daten, Standings & Team-Media',
+  // Danach suchen deutsche Fans: "NFL Ergebnisse", "NFL live", "NFL Tabelle".
+  title: 'NFL live: Ergebnisse, Tabelle & News auf Deutsch',
   description:
-    'Live-Scoreboard, Power Rankings, Beat Writers und aktuelle News für alle 32 NFL-Teams — direkt von der ESPN-API.',
+    'NFL-Ergebnisse und Live-Scores mit deutschen Anstoßzeiten, Drive-Tracker, Tabellen aller Divisionen und News zu allen 32 Teams.',
   path: '/news',
 });
 
@@ -43,7 +44,7 @@ export default async function NewsPage() {
         )}
       </div>
       <h1 className="font-display text-5xl font-bold mt-4 leading-tight">
-        News &amp; <span className="grad-text italic">Live-Daten.</span>
+        NFL live: <span className="grad-text italic">Ergebnisse &amp; Tabelle.</span>
       </h1>
       <p className="text-mute mt-3 text-lg max-w-2xl">
         Scoreboard, Standings und Team-News aktualisieren sich automatisch —

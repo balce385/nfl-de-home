@@ -59,7 +59,7 @@ STEPS = [
 
 def main():
     print("=" * 60)
-    print(f"  NFL-DE-Hub Scraper Run -- {datetime.now().isoformat()}")
+    print(f"  NFL-Fan-App Scraper Run -- {datetime.now().isoformat()}")
     print("=" * 60)
     results = []
     hard_failures = []

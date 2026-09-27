@@ -11,7 +11,7 @@ import {
   getTeamProfile,
   type TeamGame,
 } from '@/lib/nfl-live';
-import { rosterGroups, standingDe } from '@/lib/team-page';
+import { rosterGroups, standingDe, teamIntro } from '@/lib/team-page';
 import { SITE_URL, withSeo } from '@/lib/seo';
 
 /**
@@ -35,8 +35,8 @@ export async function generateMetadata({ params }: { params: { team: string } })
   if (!o) notFound();
   const standing = o.standingSummary ? `, ${standingDe(o.standingSummary)}` : '';
   return withSeo({
-    // Unter 60 Zeichen samt Marke, damit Google nichts abschneidet.
-    title: `${o.name}: Kader, Spielplan & News`,
+    // Suchanfrage "<Team> News deutsch"; die Marke faellt weg, wenn es sonst ueber 60 Zeichen wird.
+    title: `${o.name} News auf Deutsch: Kader & Spielplan`,
     description: `${o.name} auf Deutsch: Bilanz ${o.record}${standing}, Spielplan, kompletter Kader, Head Coach, Stadion und News.`,
     path: `/teams/${params.team}`,
     image: o.logo,
@@ -77,6 +77,23 @@ export default async function TeamPage({ params }: { params: { team: string } })
   const roster = rosterGroups(athletes);
   const media = TEAM_MEDIA.find((m) => m.teamId === abbr);
   const path = `/teams/${params.team}`;
+  const intro = teamIntro({
+    abbr,
+    name: o.name,
+    shortName: o.shortName,
+    record: o.record,
+    standingSummary: o.standingSummary,
+    pointsFor: o.pointsFor,
+    pointsAgainst: o.pointsAgainst,
+    gamesPlayed: o.wins + o.losses + o.ties > 0,
+    venue: profile?.venue ?? null,
+    founded: profile?.founded ?? null,
+    coach: profile?.coach ?? null,
+    next: o.next?.date
+      ? { opponentName: o.next.opponentName, home: o.next.home, when: `${dateFmt.format(new Date(o.next.date))} Uhr` }
+      : null,
+  });
+  const teamRef = { '@type': 'SportsTeam', name: o.name };
 
   const jsonLd = [
     {
@@ -98,6 +115,25 @@ export default async function TeamPage({ params }: { params: { team: string } })
         .flatMap((g) => g.players)
         .map((p) => ({ '@type': 'Person', name: p.name })),
     },
+    // Anstehende Spiele als SportsEvent, damit Google Termin und Gegner zuordnen kann.
+    ...o.upcoming
+      .filter((g) => g.date)
+      .map((g) => {
+        const opp = { '@type': 'SportsTeam', name: g.opponentName };
+        const [home, away] = g.home ? [teamRef, opp] : [opp, teamRef];
+        return {
+          '@context': 'https://schema.org',
+          '@type': 'SportsEvent',
+          name: `${away.name} @ ${home.name}`,
+          startDate: g.date,
+          eventStatus: 'https://schema.org/EventScheduled',
+          sport: 'American Football',
+          location: g.venue ? { '@type': 'Place', name: g.venue } : undefined,
+          homeTeam: home,
+          awayTeam: away,
+          competitor: [home, away],
+        };
+      }),
     {
       '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
@@ -136,6 +172,12 @@ export default async function TeamPage({ params }: { params: { team: string } })
         </div>
       </header>
 
+      <div className="mt-8 max-w-3xl space-y-3 text-ink/90 leading-relaxed">
+        {intro.map((p) => (
+          <p key={p}>{p}</p>
+        ))}
+      </div>
+
       <div className="grid lg:grid-cols-3 gap-6 mt-10">
         <section className="card p-6" aria-labelledby="spielplan">
           <h2 id="spielplan" className="font-display text-xl font-bold">
@@ -167,7 +209,7 @@ export default async function TeamPage({ params }: { params: { team: string } })
               <dt className="text-mute">Head Coach</dt>
               <dd>
                 {profile.coach
-                  ? `${profile.coach.name}${profile.coach.experience ? ` (${profile.coach.experience}. Saison)` : ''}`
+                  ? `${profile.coach.name}${profile.coach.experience ? ` (${profile.coach.experience} Jahre als Head Coach)` : ''}`
                   : '—'}
               </dd>
               <dt className="text-mute">Stadion</dt>

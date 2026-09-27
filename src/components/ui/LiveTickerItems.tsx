@@ -46,7 +46,7 @@ export function LiveTickerItems({ initialGames }: { initialGames: LiveGame[] }) 
   const items = (
     <div className="flex items-center gap-12">
       {games.length === 0 && (
-        <span className="text-mute">NFL-DE-Hub · Live-Scores starten mit dem Kickoff der Saison</span>
+        <span className="text-mute">NFL-Fan-App · Live-Scores starten mit dem Kickoff der Saison</span>
       )}
       {games.map((g) => (
         <span key={g.id} className="flex items-center gap-2 text-mute">

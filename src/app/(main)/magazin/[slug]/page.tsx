@@ -4,7 +4,8 @@ import Image from 'next/image';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { createPublicClient } from '@/lib/supabase/public';
 import { getArticle } from '@/data/articles';
-import { cutAtWord, DESC_MAX, fitTitle, isThin, OG_BASE } from '@/lib/seo';
+import { siteOwner } from '@/data/site-owner';
+import { cutAtWord, DESC_MAX, fitTitle, OG_BASE } from '@/lib/seo';
 
 // Auf Abruf erzeugt und eine Stunde gecacht (ISR) statt bei jedem Aufruf
 // gestreamt: nur so kommt ein notFound() als echter 404 an.
@@ -86,11 +87,21 @@ export default async function ArticlePage({
     '@type': 'NewsArticle',
     headline: a.title,
     description: a.excerpt ?? undefined,
-    image: a.cover_url ?? undefined,
+    // Google verlangt fuer Artikel-Rich-Results ein Bild; ohne Cover das Vorschaubild.
+    image: [a.cover_url ?? `${siteUrl}/og.png`],
     datePublished: a.published_at ?? undefined,
+    dateModified: a.published_at ?? undefined,
     inLanguage: a.language ?? 'de',
     mainEntityOfPage: `${siteUrl}/magazin/${a.slug}`,
-    publisher: { '@type': 'Organization', name: 'NFL-DE-Hub', url: siteUrl },
+    author: local
+      ? { '@type': 'Person', name: siteOwner.name, url: `${siteUrl}/about` }
+      : { '@type': 'Organization', name: a.source ?? 'NFL-Fan-App' },
+    publisher: {
+      '@type': 'Organization',
+      name: 'NFL-Fan-App',
+      url: siteUrl,
+      logo: { '@type': 'ImageObject', url: `${siteUrl}/icon.png`, width: 512, height: 512 },
+    },
   };
 
   return (
@@ -147,6 +158,14 @@ export default async function ArticlePage({
         <div lang={lang} className="prose prose-invert max-w-none text-ink leading-relaxed whitespace-pre-wrap">
           {a.body_md}
         </div>
+      )}
+
+      {local?.related && (
+        <p className="mt-8">
+          <Link href={local.related.href} className="font-semibold text-primary hover:text-accent">
+            {`${local.related.label} →`}
+          </Link>
+        </p>
       )}
 
       {a.source_url && (
@@ -212,12 +231,14 @@ export async function generateMetadata({
   const description = raw ? cutAtWord(raw, DESC_MAX) : undefined;
   const path = `/magazin/${params.slug}`;
   return {
-    // Vorher "Titel — NFL DE Hub | NFL-DE-Hub": Marke doppelt, Titel meist gekürzt.
+    // Vorher "Titel — NFL DE Hub | NFL-Fan-App": Marke doppelt, Titel meist gekürzt.
     title: fitTitle(a.title),
     description,
     alternates: { canonical: path },
-    // Nur der Feed-Anriss: lesbar, aber nicht in den Suchindex (siehe isThin).
-    robots: isThin(a.body_md) ? { index: false, follow: true } : undefined,
+    // Nur eigene Texte in den Suchindex. Scraper-Artikel sind fremde Meldungen,
+    // meist maschinell uebersetzt — Google wertet sie als "scaled content", und
+    // viele davon ziehen die ganze Domain herunter. Lesbar bleiben sie trotzdem.
+    robots: local ? undefined : { index: false, follow: true },
     openGraph: {
       ...OG_BASE,
       type: 'article',

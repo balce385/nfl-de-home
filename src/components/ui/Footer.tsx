@@ -15,6 +15,8 @@ const sections = [
     title: 'Produkt',
     links: [
       { href: '/news', label: 'Live & News' },
+      { href: '/teams', label: 'Alle 32 Teams' },
+      { href: '/nfl-munich-game-2026', label: 'Munich Game 2026' },
       { href: '/stats', label: 'Advanced Stats' },
       { href: '/playbook', label: 'Playbook' },
       { href: '/magazin', label: 'Magazin' },
@@ -75,7 +77,7 @@ export function Footer() {
 
       <div className="border-t border-line">
         <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-mute font-mono">
-          <span>© {new Date().getFullYear()} NFL-DE-Hub · Nicht offiziell mit der NFL verbunden.</span>
+          <span>© {new Date().getFullYear()} NFL-Fan-App · Nicht offiziell mit der NFL verbunden.</span>
           <span>Daten: ESPN · nflverse · TheSportsDB</span>
         </div>
       </div>
