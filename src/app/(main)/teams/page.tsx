@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getAllTeams, getStandings } from '@/lib/nfl-live';
 import { SITE_URL, withSeo } from '@/lib/seo';
+import { espnLogo } from '@/lib/utils';
 
 export const revalidate = 900;
 
@@ -66,7 +67,7 @@ export default async function TeamsPage() {
                   >
                     {t.logo && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={t.logo} alt="" width={40} height={40} className="w-10 h-10" />
+                      <img src={espnLogo(t.logo, 40)} alt="" width={40} height={40} className="w-10 h-10" />
                     )}
                     <span className="min-w-0">
                       <span className="block font-semibold truncate">{t.name}</span>

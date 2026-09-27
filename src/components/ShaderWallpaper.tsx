@@ -35,7 +35,7 @@ export interface ShaderWallpaperProps {
   variant?: ShaderVariant;
   /** Maus-Parallax + Klick-Ripples aktivieren. Default: true. */
   interactive?: boolean;
-  /** Max. Device-Pixel-Ratio (Performance-Cap). Default: 2. */
+  /** Max. Device-Pixel-Ratio (Performance-Cap). Default: 1 — weiche Verläufe brauchen keine Retina-Auflösung. */
   maxDpr?: number;
   /** Zusaetzliche CSS-Klasse fuer den Canvas. */
   className?: string;
@@ -182,182 +182,205 @@ const MAXR = 12;
 export default function ShaderWallpaper({
   variant = 'aurora',
   interactive = true,
-  maxDpr = 2,
+  maxDpr = 1,
   className,
   style,
 }: ShaderWallpaperProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    function start(): (() => void) | undefined {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      // Barrierefreiheit und Akku: bei reduzierter Bewegung nur ein Standbild.
+      const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const gl = canvas.getContext('webgl', {
-      antialias: false,
-      premultipliedAlpha: false,
-      preserveDrawingBuffer: true,
-    });
-    if (!gl) {
-      // WebGL nicht verfuegbar -> Komponente bleibt einfach leer.
-      return;
-    }
-
-    // ---- compile helpers ----
-    function compile(type: number, src: string) {
-      const s = gl!.createShader(type)!;
-      gl!.shaderSource(s, src);
-      gl!.compileShader(s);
-      // Bei verlorenem Kontext liefert getShaderParameter null/false -> nicht loggen.
-      if (!gl!.isContextLost() && !gl!.getShaderParameter(s, gl!.COMPILE_STATUS)) {
-        console.error(gl!.getShaderInfoLog(s), src);
-      }
-      return s;
-    }
-    function program(frag: string) {
-      const p = gl!.createProgram()!;
-      gl!.attachShader(p, compile(gl!.VERTEX_SHADER, VERT));
-      gl!.attachShader(p, compile(gl!.FRAGMENT_SHADER, HEAD + frag));
-      gl!.linkProgram(p);
-      if (!gl!.isContextLost() && !gl!.getProgramParameter(p, gl!.LINK_STATUS)) {
-        console.error(gl!.getProgramInfoLog(p));
-      }
-      return p;
-    }
-
-    // ---- GL-Ressourcen (werden bei Kontextverlust neu erzeugt) ----
-    type GLResources = {
-      prog: WebGLProgram;
-      loc: {
-        pos: number;
-        res: WebGLUniformLocation | null;
-        time: WebGLUniformLocation | null;
-        mouse: WebGLUniformLocation | null;
-        rip: WebGLUniformLocation | null;
-        ripN: WebGLUniformLocation | null;
-      };
-      buf: WebGLBuffer | null;
-    };
-
-    function initGL(): GLResources {
-      const prog = program(FRAGS[variant]);
-      const loc = {
-        pos: gl!.getAttribLocation(prog, 'p'),
-        res: gl!.getUniformLocation(prog, 'u_res'),
-        time: gl!.getUniformLocation(prog, 'u_time'),
-        mouse: gl!.getUniformLocation(prog, 'u_mouse'),
-        rip: gl!.getUniformLocation(prog, 'u_rip'),
-        ripN: gl!.getUniformLocation(prog, 'u_ripN'),
-      };
-      const buf = gl!.createBuffer();
-      gl!.bindBuffer(gl!.ARRAY_BUFFER, buf);
-      gl!.bufferData(gl!.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl!.STATIC_DRAW);
-      return { prog, loc, buf };
-    }
-
-    let res = initGL();
-
-    // ---- state ----
-    const mouse = { x: 0.5, y: 0.5 };
-    const sm = { x: 0.5, y: 0.5 };
-    let ripples: { x: number; y: number; t: number; w: number }[] = [];
-    const t0 = performance.now();
-    const ripBuf = new Float32Array(MAXR * 4);
-    let raf = 0;
-
-    function resize() {
-      const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
-      canvas!.width = Math.floor(window.innerWidth * dpr);
-      canvas!.height = Math.floor(window.innerHeight * dpr);
-      canvas!.style.width = window.innerWidth + 'px';
-      canvas!.style.height = window.innerHeight + 'px';
-    }
-    resize();
-
-    function addRipple(nx: number, ny: number) {
-      ripples.push({ x: nx, y: ny, t: (performance.now() - t0) / 1000, w: 1.0 });
-      if (ripples.length > MAXR) ripples.shift();
-    }
-
-    const onMove = (e: PointerEvent) => {
-      mouse.x = e.clientX / window.innerWidth;
-      mouse.y = 1 - e.clientY / window.innerHeight;
-    };
-    const onDown = (e: PointerEvent) => {
-      addRipple(e.clientX / window.innerWidth, 1 - e.clientY / window.innerHeight);
-    };
-
-    window.addEventListener('resize', resize);
-    if (interactive) {
-      window.addEventListener('pointermove', onMove);
-      window.addEventListener('pointerdown', onDown);
-    }
-
-    // ---- Kontextverlust-Handling (z. B. GPU-Reset, Tab-Wechsel) ----
-    const onLost = (e: Event) => {
-      // preventDefault signalisiert dem Browser, dass wir den Kontext
-      // wiederherstellen wollen -> spaeter wird 'webglcontextrestored' gefeuert.
-      e.preventDefault();
-      cancelAnimationFrame(raf);
-      raf = 0;
-    };
-    const onRestored = () => {
-      res = initGL();
-      resize();
-      if (!raf) raf = requestAnimationFrame(frame);
-    };
-    canvas.addEventListener('webglcontextlost', onLost);
-    canvas.addEventListener('webglcontextrestored', onRestored);
-
-    // ---- render loop ----
-    function frame() {
-      if (gl!.isContextLost()) {
-        raf = 0;
+      const gl = canvas.getContext('webgl', {
+        antialias: false,
+        premultipliedAlpha: false,
+        preserveDrawingBuffer: true,
+      });
+      if (!gl) {
+        // WebGL nicht verfuegbar -> Komponente bleibt einfach leer.
         return;
       }
-      const now = (performance.now() - t0) / 1000;
-      sm.x += (mouse.x - sm.x) * 0.12;
-      sm.y += (mouse.y - sm.y) * 0.12;
-      ripples = ripples.filter((r) => now - r.t < 6.0);
 
-      gl!.viewport(0, 0, canvas!.width, canvas!.height);
-      gl!.useProgram(res.prog);
-      gl!.bindBuffer(gl!.ARRAY_BUFFER, res.buf);
-      gl!.enableVertexAttribArray(res.loc.pos);
-      gl!.vertexAttribPointer(res.loc.pos, 2, gl!.FLOAT, false, 0, 0);
-      gl!.uniform2f(res.loc.res, canvas!.width, canvas!.height);
-      gl!.uniform1f(res.loc.time, now);
-      gl!.uniform2f(res.loc.mouse, mouse.x, mouse.y);
-
-      const n = Math.min(ripples.length, MAXR);
-      for (let i = 0; i < n; i++) {
-        const r = ripples[i];
-        ripBuf[i * 4] = r.x;
-        ripBuf[i * 4 + 1] = r.y;
-        ripBuf[i * 4 + 2] = r.t;
-        ripBuf[i * 4 + 3] = r.w;
+      // ---- compile helpers ----
+      function compile(type: number, src: string) {
+        const s = gl!.createShader(type)!;
+        gl!.shaderSource(s, src);
+        gl!.compileShader(s);
+        // Bei verlorenem Kontext liefert getShaderParameter null/false -> nicht loggen.
+        if (!gl!.isContextLost() && !gl!.getShaderParameter(s, gl!.COMPILE_STATUS)) {
+          console.error(gl!.getShaderInfoLog(s), src);
+        }
+        return s;
       }
-      gl!.uniform4fv(res.loc.rip, ripBuf);
-      gl!.uniform1i(res.loc.ripN, n);
-      gl!.drawArrays(gl!.TRIANGLES, 0, 3);
+      function program(frag: string) {
+        const p = gl!.createProgram()!;
+        gl!.attachShader(p, compile(gl!.VERTEX_SHADER, VERT));
+        gl!.attachShader(p, compile(gl!.FRAGMENT_SHADER, HEAD + frag));
+        gl!.linkProgram(p);
+        if (!gl!.isContextLost() && !gl!.getProgramParameter(p, gl!.LINK_STATUS)) {
+          console.error(gl!.getProgramInfoLog(p));
+        }
+        return p;
+      }
 
+      // ---- GL-Ressourcen (werden bei Kontextverlust neu erzeugt) ----
+      type GLResources = {
+        prog: WebGLProgram;
+        loc: {
+          pos: number;
+          res: WebGLUniformLocation | null;
+          time: WebGLUniformLocation | null;
+          mouse: WebGLUniformLocation | null;
+          rip: WebGLUniformLocation | null;
+          ripN: WebGLUniformLocation | null;
+        };
+        buf: WebGLBuffer | null;
+      };
+
+      function initGL(): GLResources {
+        const prog = program(FRAGS[variant]);
+        const loc = {
+          pos: gl!.getAttribLocation(prog, 'p'),
+          res: gl!.getUniformLocation(prog, 'u_res'),
+          time: gl!.getUniformLocation(prog, 'u_time'),
+          mouse: gl!.getUniformLocation(prog, 'u_mouse'),
+          rip: gl!.getUniformLocation(prog, 'u_rip'),
+          ripN: gl!.getUniformLocation(prog, 'u_ripN'),
+        };
+        const buf = gl!.createBuffer();
+        gl!.bindBuffer(gl!.ARRAY_BUFFER, buf);
+        gl!.bufferData(gl!.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl!.STATIC_DRAW);
+        return { prog, loc, buf };
+      }
+
+      let res = initGL();
+
+      // ---- state ----
+      const mouse = { x: 0.5, y: 0.5 };
+      const sm = { x: 0.5, y: 0.5 };
+      let ripples: { x: number; y: number; t: number; w: number }[] = [];
+      const t0 = performance.now();
+      const ripBuf = new Float32Array(MAXR * 4);
+      let raf = 0;
+
+      function resize() {
+        const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
+        canvas!.width = Math.floor(window.innerWidth * dpr);
+        canvas!.height = Math.floor(window.innerHeight * dpr);
+        canvas!.style.width = window.innerWidth + 'px';
+        canvas!.style.height = window.innerHeight + 'px';
+      }
+      resize();
+
+      function addRipple(nx: number, ny: number) {
+        ripples.push({ x: nx, y: ny, t: (performance.now() - t0) / 1000, w: 1.0 });
+        if (ripples.length > MAXR) ripples.shift();
+      }
+
+      const onMove = (e: PointerEvent) => {
+        mouse.x = e.clientX / window.innerWidth;
+        mouse.y = 1 - e.clientY / window.innerHeight;
+      };
+      const onDown = (e: PointerEvent) => {
+        addRipple(e.clientX / window.innerWidth, 1 - e.clientY / window.innerHeight);
+      };
+
+      window.addEventListener('resize', resize);
+      if (interactive) {
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerdown', onDown);
+      }
+
+      // ---- Kontextverlust-Handling (z. B. GPU-Reset, Tab-Wechsel) ----
+      const onLost = (e: Event) => {
+        // preventDefault signalisiert dem Browser, dass wir den Kontext
+        // wiederherstellen wollen -> spaeter wird 'webglcontextrestored' gefeuert.
+        e.preventDefault();
+        cancelAnimationFrame(raf);
+        raf = 0;
+      };
+      const onRestored = () => {
+        res = initGL();
+        resize();
+        if (!raf) raf = requestAnimationFrame(frame);
+      };
+      canvas.addEventListener('webglcontextlost', onLost);
+      canvas.addEventListener('webglcontextrestored', onRestored);
+
+      // ---- render loop ----
+      function frame() {
+        if (gl!.isContextLost()) {
+          raf = 0;
+          return;
+        }
+        const now = (performance.now() - t0) / 1000;
+        sm.x += (mouse.x - sm.x) * 0.12;
+        sm.y += (mouse.y - sm.y) * 0.12;
+        ripples = ripples.filter((r) => now - r.t < 6.0);
+
+        gl!.viewport(0, 0, canvas!.width, canvas!.height);
+        gl!.useProgram(res.prog);
+        gl!.bindBuffer(gl!.ARRAY_BUFFER, res.buf);
+        gl!.enableVertexAttribArray(res.loc.pos);
+        gl!.vertexAttribPointer(res.loc.pos, 2, gl!.FLOAT, false, 0, 0);
+        gl!.uniform2f(res.loc.res, canvas!.width, canvas!.height);
+        gl!.uniform1f(res.loc.time, now);
+        gl!.uniform2f(res.loc.mouse, mouse.x, mouse.y);
+
+        const n = Math.min(ripples.length, MAXR);
+        for (let i = 0; i < n; i++) {
+          const r = ripples[i];
+          ripBuf[i * 4] = r.x;
+          ripBuf[i * 4 + 1] = r.y;
+          ripBuf[i * 4 + 2] = r.t;
+          ripBuf[i * 4 + 3] = r.w;
+        }
+        gl!.uniform4fv(res.loc.rip, ripBuf);
+        gl!.uniform1i(res.loc.ripN, n);
+        gl!.drawArrays(gl!.TRIANGLES, 0, 3);
+
+        raf = still ? 0 : requestAnimationFrame(frame);
+      }
       raf = requestAnimationFrame(frame);
-    }
-    raf = requestAnimationFrame(frame);
 
-    // ---- cleanup ----
+      // ---- cleanup ----
+      return () => {
+        cancelAnimationFrame(raf);
+        window.removeEventListener('resize', resize);
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerdown', onDown);
+        canvas.removeEventListener('webglcontextlost', onLost);
+        canvas.removeEventListener('webglcontextrestored', onRestored);
+        gl.deleteBuffer(res.buf);
+        gl.deleteProgram(res.prog);
+        // WICHTIG: kein loseContext() hier. React StrictMode ruft den Effekt
+        // im Dev doppelt auf (Mount -> Cleanup -> Mount). loseContext() wuerde
+        // den Canvas-Kontext dauerhaft zerstoeren, sodass der zweite Mount nur
+        // einen toten Kontext zurueckbekaeme -> leerer/weisser Hintergrund.
+      };
+    }
+
+    // Erst nach dem Laden und im Leerlauf starten: Shader-Kompilierung und
+    // Render-Loop bremsten sonst Hydration und LCP (Lighthouse mobil: TBT 550 ms).
+    let stop: (() => void) | undefined;
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const kick = () => {
+      const idle = window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 200));
+      // `alive`: ein spaeter Leerlauf-Callback darf nach dem Aufraeumen keinen zweiten Loop starten.
+      timer = setTimeout(() => idle(() => alive && (stop = start()), { timeout: 3000 }), 0);
+    };
+    if (document.readyState === 'complete') kick();
+    else window.addEventListener('load', kick, { once: true });
     return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', resize);
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerdown', onDown);
-      canvas.removeEventListener('webglcontextlost', onLost);
-      canvas.removeEventListener('webglcontextrestored', onRestored);
-      gl.deleteBuffer(res.buf);
-      gl.deleteProgram(res.prog);
-      // WICHTIG: kein loseContext() hier. React StrictMode ruft den Effekt
-      // im Dev doppelt auf (Mount -> Cleanup -> Mount). loseContext() wuerde
-      // den Canvas-Kontext dauerhaft zerstoeren, sodass der zweite Mount nur
-      // einen toten Kontext zurueckbekaeme -> leerer/weisser Hintergrund.
+      window.removeEventListener('load', kick);
+      alive = false;
+      clearTimeout(timer);
+      stop?.();
     };
   }, [variant, interactive, maxDpr]);
 

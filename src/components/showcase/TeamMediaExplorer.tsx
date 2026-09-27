@@ -12,6 +12,7 @@ import { ExternalLink, Newspaper, Youtube } from 'lucide-react';
 import { BeatWriters } from './BeatWriters';
 import { getTeamMedia } from '@/data/team-media';
 import { useTeamSelection } from '@/components/TeamSelectionContext';
+import { espnLogo } from '@/lib/utils';
 
 export type ExplorerTeam = {
   id: string;
@@ -88,7 +89,7 @@ export function TeamMediaExplorer({ teams }: { teams: ExplorerTeam[] }) {
             }`}
           >
             {t.logo ? (
-              <Image src={t.logo} alt={t.name} width={28} height={28} unoptimized />
+              <Image src={espnLogo(t.logo, 28)} alt={t.name} width={28} height={28} unoptimized />
             ) : (
               <span
                 className="w-7 h-7 rounded-full inline-block"

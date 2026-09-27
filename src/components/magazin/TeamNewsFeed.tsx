@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { ExternalLink } from 'lucide-react';
 import { useTeamSelection } from '@/components/TeamSelectionContext';
+import { espnLogo } from '@/lib/utils';
 
 type TeamOption = { id: string; name: string; shortName: string; color: string; logo: string | null };
 
@@ -113,7 +114,7 @@ export function TeamNewsFeed({ teams }: { teams: TeamOption[] }) {
             }`}
           >
             {t.logo ? (
-              <Image src={t.logo} alt="" width={20} height={20} unoptimized />
+              <Image src={espnLogo(t.logo, 20)} alt="" width={20} height={20} unoptimized />
             ) : (
               <span className="w-5 h-5 rounded-full inline-block" style={{ backgroundColor: t.color }} />
             )}

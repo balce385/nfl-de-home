@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { CalendarDays, Heart, MapPin, Newspaper, Trophy } from 'lucide-react';
 import { useTeamSelection } from '@/components/TeamSelectionContext';
+import { espnLogo } from '@/lib/utils';
 
 type TeamOption = {
   id: string;
@@ -107,7 +108,7 @@ function TeamLogo({ src, alt, size = 28, color }: { src: string | null; alt: str
       />
     );
   }
-  return <Image src={src} alt={alt} width={size} height={size} unoptimized className="shrink-0" />;
+  return <Image src={espnLogo(src, size)} alt={alt} width={size} height={size} unoptimized className="shrink-0" />;
 }
 
 function Skeleton({ className = '' }: { className?: string }) {

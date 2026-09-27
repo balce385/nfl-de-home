@@ -20,6 +20,7 @@ import { HighlightBanner } from './HighlightBanner';
 import { DepthChartCard } from './DepthChartCard';
 import { useTeamSelection } from '@/components/TeamSelectionContext';
 import type { Situation } from './LiveDriveTracker';
+import { espnLogo } from '@/lib/utils';
 
 export type ShowcaseTeam = {
   id: string;
@@ -171,7 +172,7 @@ export function TeamShowcase({
         </div>
         <label className="flex items-center gap-2 card px-3 py-2 ml-auto">
           {team?.logo ? (
-            <Image src={team.logo} alt="" width={22} height={22} unoptimized />
+            <Image src={espnLogo(team.logo, 22)} alt="" width={22} height={22} unoptimized />
           ) : (
             <span className="w-5 h-5 rounded-full" style={{ backgroundColor: team?.color }} />
           )}

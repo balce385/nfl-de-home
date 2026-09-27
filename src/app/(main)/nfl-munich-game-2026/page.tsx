@@ -3,6 +3,7 @@ import { ExternalLink } from 'lucide-react';
 import { getTeamOverview, type TeamOverview } from '@/lib/nfl-live';
 import { standingDe } from '@/lib/team-page';
 import { SITE_URL, withSeo } from '@/lib/seo';
+import { espnLogo } from '@/lib/utils';
 
 /**
  * Landingpage zum NFL-Spiel in München. Das Suchvolumen für "NFL München",
@@ -78,7 +79,7 @@ function FormCard({ t, role, slug }: { t: TeamOverview | null; role: string; slu
       <div className="flex items-center gap-4">
         {t.logo && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={t.logo} alt={`Logo ${t.name}`} width={56} height={56} className="w-14 h-14" />
+          <img src={espnLogo(t.logo, 56)} alt={`Logo ${t.name}`} width={56} height={56} className="w-14 h-14" />
         )}
         <div>
           <div className="text-xs font-mono uppercase tracking-widest text-mute">{role}</div>

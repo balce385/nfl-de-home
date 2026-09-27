@@ -10,6 +10,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { normalizeName, type SearchPlayer } from '@/lib/player-search';
+import { espnLogo } from '@/lib/utils';
 
 export type SearchTeam = { id: string; name: string; shortName: string; logo: string | null };
 
@@ -226,7 +227,7 @@ function OptionBody({ o }: { o: Option }) {
       <>
         {o.team.logo && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={o.team.logo} alt="" width={18} height={18} className="shrink-0" />
+          <img src={espnLogo(o.team.logo, 18)} alt="" width={18} height={18} className="shrink-0" />
         )}
         <span className="text-ink">{o.team.name}</span>
         <span className="ml-auto font-mono text-[11px]">{o.team.id}</span>

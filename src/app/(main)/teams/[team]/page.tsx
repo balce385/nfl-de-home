@@ -13,6 +13,7 @@ import {
 } from '@/lib/nfl-live';
 import { rosterGroups, standingDe, teamIntro } from '@/lib/team-page';
 import { SITE_URL, withSeo } from '@/lib/seo';
+import { espnLogo } from '@/lib/utils';
 
 /**
  * Eine Seite je Team: Bilanz, Spielplan, Steckbrief, kompletter Kader und
@@ -160,7 +161,7 @@ export default async function TeamPage({ params }: { params: { team: string } })
       <header className="flex items-center gap-5 flex-wrap">
         {o.logo && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={o.logo} alt={`Logo ${o.name}`} width={88} height={88} className="w-20 h-20" />
+          <img src={espnLogo(o.logo, 88)} alt={`Logo ${o.name}`} width={88} height={88} className="w-20 h-20" />
         )}
         <div>
           <h1 className="font-display text-5xl font-bold leading-tight">{o.name}</h1>
