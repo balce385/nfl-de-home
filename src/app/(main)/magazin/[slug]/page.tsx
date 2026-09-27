@@ -238,7 +238,9 @@ export async function generateMetadata({
     // Nur eigene Texte in den Suchindex. Scraper-Artikel sind fremde Meldungen,
     // meist maschinell uebersetzt — Google wertet sie als "scaled content", und
     // viele davon ziehen die ganze Domain herunter. Lesbar bleiben sie trotzdem.
-    robots: local ? undefined : { index: false, follow: true },
+    // Schluessel bei eigenen Texten ganz weglassen: schon `robots: undefined`
+    // verdraengt die Vorgabe aus dem Layout (max-image-preview:large fuer Discover).
+    ...(local ? {} : { robots: { index: false, follow: true } }),
     openGraph: {
       ...OG_BASE,
       type: 'article',

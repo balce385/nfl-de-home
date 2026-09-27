@@ -1,4 +1,6 @@
-# NFL-DE-Home
+# NFL-Fan-App
+
+**Live: [nfl-fan-app.de](https://nfl-fan-app.de)** · [API-Doku](https://nfl-fan-app.de/api-docs) · [Alle 32 Teams](https://nfl-fan-app.de/teams) · [Advanced Stats](https://nfl-fan-app.de/stats)
 
 Die deutschsprachige NFL-Heimat — News, Live-Stats, Advanced Analytics, Community-Chat
 und ein eigenes Magazin. Alles kostenlos, DSGVO-konform, EU-gehostet.
